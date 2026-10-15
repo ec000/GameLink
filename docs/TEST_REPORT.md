@@ -42,3 +42,5 @@ macOS arm64 / Qt 6.11.2 全 GUI 已编译。新增 Qt Test 本机 HTTP fixtures�
 新增 2 秒总请求 deadline，弥补 Qt transfer timeout 只限制无数据期间的空闲时间。增加 GUI 启动自检，检查 profiles、页面与 TLS 可用性。所有本机 Qt 测试通过；Windows 另由 `.github/workflows/build.yml` 编译和打包验证，首次运行结果待记录。
 
 fixture 截图位于 build/qt6/qt-room-fixture.png，标题明确标为 MOCK，不代表真实 P2P 连接。真实 ZeroTier、游戏、NAT 场景及 Windows 交互式桌面仍未验收。
+
+Windows 首次 run 38759602128 的 MSVC 编译和 3/3 CTest 均通过；安装阶段暴露 relative --prefix 使 Qt deploy_qt_conf 拒绝路径的问题。已将 PowerShell stage 改为绝对路径，并将 CMAKE_INSTALL_BINDIR 设为与 flat ZIP/安装器一致的目录，让 Qt DLL 和 qt.conf 位于 GameLink.exe 旁；修正后重新运行 CI。

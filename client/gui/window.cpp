@@ -271,12 +271,12 @@ void Window::probeStep(){
  probeClock.restart();udp.writeDatagram(QByteArray("GL1Q:")+probeNonce,probeTarget,activeProbePort);
 }
 void Window::datagrams(){
- int count=0;while(udp.hasPendingDatagrams() && ++count<=128){const auto d=udp.receiveDatagram(128);const auto data=d.data();
-  if(data.startsWith("GL1R:") && probeRunning && !probeNonce.isEmpty() && data.mid(5)==probeNonce && d.senderAddress()==probeTarget && d.senderPort()==activeProbePort){rtts.push_back(static_cast<double>(probeClock.nsecsElapsed())/1000000.0);probeNonce.clear();continue;}
-  if(!data.startsWith("GL1Q:") || data.size()<21 || data.size()>40 || d.senderPort()!=activeProbePort)continue;
+ int count=0;while(udp.hasPendingDatagrams() && ++count<=128){const auto d=udp.receiveDatagram(128);const auto payload=d.data();
+  if(payload.startsWith("GL1R:") && probeRunning && !probeNonce.isEmpty() && payload.mid(5)==probeNonce && d.senderAddress()==probeTarget && d.senderPort()==activeProbePort){rtts.push_back(static_cast<double>(probeClock.nsecsElapsed())/1000000.0);probeNonce.clear();continue;}
+  if(!payload.startsWith("GL1Q:") || payload.size()<21 || payload.size()>40 || d.senderPort()!=activeProbePort)continue;
   bool allowed=false;for(const auto& v:roomPeers){const auto p=v.toObject();if(!p[S("authorized")].toBool())continue;for(const auto& ip:p[S("virtualIps")].toArray())if(QHostAddress(ip.toString())==d.senderAddress())allowed=true;}
   const int second=static_cast<int>(QDateTime::currentSecsSinceEpoch()%1000000);if(echoBudget/100!=second)echoBudget=second*100;
   if(!allowed || echoBudget%100>=32)continue;++echoBudget;
-  udp.writeDatagram(QByteArray("GL1R:")+data.mid(5),d.senderAddress(),d.senderPort());
+  udp.writeDatagram(QByteArray("GL1R:")+payload.mid(5),d.senderAddress(),d.senderPort());
  }
 }

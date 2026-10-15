@@ -81,7 +81,7 @@ Qt 路径只是示例，应使用实际安装的 SDK。手动编译：
 cmake -S . -B build/windows -G 'Visual Studio 17 2022' -A x64 -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
 cmake --build build/windows --config Release
 ctest --test-dir build/windows -C Release --output-on-failure
-cmake --install build/windows --config Release --prefix build/stage
+cmake --install build/windows --config Release --prefix "$PWD/build/stage"
 .\build\stage\GameLink.exe
 ```
 

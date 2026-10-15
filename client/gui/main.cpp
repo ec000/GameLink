@@ -21,7 +21,9 @@ int main(int argc, char** argv) {
         QTimer::singleShot(0, &app, [&] {
             const auto* games = window.findChild<QComboBox*>(QStringLiteral("gameSelector"));
             const auto* tabs = qobject_cast<QTabWidget*>(window.centralWidget());
-            app.exit(games && games->count() == 3 && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
+            const bool profilesReady = games && games->findData(QStringLiteral("warcraft3")) >= 0 &&
+                games->findData(QStringLiteral("dst")) >= 0 && games->findData(QStringLiteral("overcooked2")) >= 0;
+            app.exit(profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();
