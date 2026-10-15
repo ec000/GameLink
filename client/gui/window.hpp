@@ -7,6 +7,7 @@
 #include <QUdpSocket>
 #include <QTimer>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QHash>
 #include <optional>
 class QLabel;class QLineEdit;class QComboBox;class QPlainTextEdit;class QTableWidget;class QPushButton;

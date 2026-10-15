@@ -1,0 +1,66 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server-and-core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Build and test C++ core
+        run: |
+          cmake -S . -B build/core -DGAMELINK_BUILD_GUI=OFF -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/core --parallel 2
+          ctest --test-dir build/core --output-on-failure
+      - name: Test and build Go server
+        working-directory: server
+        run: |
+          go test -race -cover ./...
+          go vet ./...
+          go build -trimpath -o ../build/server/gamelink-server-linux-amd64 ./cmd/gamelink-server
+      - name: Validate inspection and run process smoke test
+        run: |
+          python3 -B tests/inspection_tests.py
+          python3 tests/server_smoke.py --binary build/server/gamelink-server-linux-amd64
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: GameLink-server-linux-amd64
+          path: build/server/gamelink-server-linux-amd64
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-qt6:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install Qt 6.8.3 MSVC SDK
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+      - name: Compile, test and stage Windows client
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -QtPrefix $env:QT_ROOT_DIR
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: GameLink-Windows-Qt6
+          path: build/GameLink-0.1.0-Windows.zip
+          if-no-files-found: error
+          retention-days: 14

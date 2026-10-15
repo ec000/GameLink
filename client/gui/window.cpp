@@ -30,7 +30,7 @@ QPushButton* button(const QString& title,QVBoxLayout* layout,std::function<void(
 }
 QStringList assignedIPs(const QJsonArray& networks,const QString& id){
  QStringList out;for(const auto& v:networks){const auto n=v.toObject();if(n[S("id")].toString()==id || n[S("nwid")].toString()==id)
- for(const auto& a:n[S("assignedAddresses")].toArray())out<<a.toString().section(QChar('/'),0,0);}
+ for(const auto& a:n[S("assignedAddresses")].toArray())out<<a.toString().section(QLatin1Char('/'),0,0);}
  return out;
 }
 gamelink::Peer parsePeer(const QJsonObject& p){
@@ -63,13 +63,13 @@ Window::Window():transport(this),settings(),udp(this){
   log(S("进程检测仅实现 Windows tasklist；当前平台未支持"));
 #endif
  });
- button(S("启动所选游戏"),g,[this]{launch();});
+ button(S("启动所选游戏"),g,[this]{launch();})->setObjectName(S("launchGameButton"));
  auto* gameNote=new QLabel(S("当前配置均为未验证候选。Warcraft III：传统 LAN 版本；DST：手动虚拟 IP；Overcooked! 2：仅观察 Steam/UDP。自动安装扫描与 LAN 广播实测尚未完成。"));gameNote->setWordWrap(true);g->addWidget(gameNote);g->addStretch();
  auto* r=page(S("Room"));roomInfo=new QLabel(S("没有房间"));roomInfo->setWordWrap(true);r->addWidget(roomInfo);
  roomCode=new QLineEdit;roomCode->setPlaceholderText(S("房间码 id:邀请密钥"));r->addWidget(roomCode);
- button(S("创建房间（当前游戏/策略）"),r,[this]{roomAction(true);});button(S("加入房间"),r,[this]{roomAction(false);});
- button(S("加入房间的 ZeroTier 网络"),r,[this]{localJoin();});button(S("离开房间"),r,[this]{leaveRoom();});
- button(S("复制房间信息"),r,[this]{QApplication::clipboard()->setText(roomId+QChar(':')+invite);log(S("已复制邀请信息；请仅分享给可信玩家"));});
+ button(S("创建房间（当前游戏/策略）"),r,[this]{roomAction(true);})->setObjectName(S("createRoomButton"));button(S("加入房间"),r,[this]{roomAction(false);})->setObjectName(S("joinRoomButton"));
+ button(S("加入房间的 ZeroTier 网络"),r,[this]{localJoin();})->setObjectName(S("joinNetworkButton"));button(S("离开房间"),r,[this]{leaveRoom();})->setObjectName(S("leaveRoomButton"));
+ button(S("复制房间信息"),r,[this]{QApplication::clipboard()->setText(roomId+QLatin1Char(':')+invite);log(S("已复制邀请信息；请仅分享给可信玩家"));});
  peersTable=new QTableWidget(0,5);peersTable->setHorizontalHeaderLabels({S("玩家 / Node ID"),S("虚拟 IP"),S("状态"),S("物理路径"),S("依据")});peersTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);r->addWidget(peersTable);
  auto* d=page(S("Network Diagnostics"));auto* form=new QFormLayout;d->addLayout(form);
  bindIP=new QLineEdit;bindIP->setPlaceholderText(S("本机已分配虚拟 IPv4"));form->addRow(S("探测监听 IP"),bindIP);
@@ -92,6 +92,12 @@ Window::Window():transport(this),settings(),udp(this){
  policy=new QComboBox;policy->addItems({S("Preferred Direct"),S("Direct Required — unsupported"),S("Relay Allowed")});sf->addRow(S("新房间策略"),policy);
  button(S("保存设置并刷新"),st,[this]{save();pollLocal();});
  button(S("导出脱敏事件日志"),st,[this]{const auto p=QFileDialog::getSaveFileName(this,S("导出日志"),S("gamelink-events.txt"));if(!p.isEmpty()){QFile f(p);if(f.open(QIODevice::WriteOnly))f.write(events->toPlainText().toUtf8());}});
+ home->setObjectName(S("homeStatus"));roomInfo->setObjectName(S("roomStatus"));
+ games->setObjectName(S("gameSelector"));policy->setObjectName(S("policySelector"));
+ serverUrl->setObjectName(S("serverUrl"));serverToken->setObjectName(S("serverToken"));
+ ztTokenFile->setObjectName(S("ztTokenFile"));ztPort->setObjectName(S("ztPort"));
+ roomCode->setObjectName(S("roomCode"));events->setObjectName(S("events"));
+ peersTable->setObjectName(S("peersTable"));target->setObjectName(S("probeTarget"));
  st->addWidget(new QLabel(S("自动启动暂未实现；不保存任何明文 Token，不自动修改网络/防火墙。")));st->addStretch();
  const QDir profileDir(QCoreApplication::applicationDirPath()+S("/profiles"));
  for(const auto& file:profileDir.entryList({S("*.json")},QDir::Files)){
@@ -110,7 +116,7 @@ Window::Window():transport(this),settings(),udp(this){
  connect(&probeTimer,&QTimer::timeout,this,[this]{probeStep();});
  joiningAge.start();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
 }
-void Window::log(const QString& s){events->appendPlainText(QDateTime::currentDateTimeUtc().toString(Qt::ISODate)+QChar(' ')+s);}
+void Window::log(const QString& s){events->appendPlainText(QDateTime::currentDateTimeUtc().toString(Qt::ISODate)+QLatin1Char(' ')+s);}
 void Window::save(){settings.setValue(S("server"),serverUrl->text());settings.setValue(S("ztTokenFile"),ztTokenFile->text());settings.setValue(S("ztPort"),ztPort->text());settings.setValue(S("network"),manualNetwork->text());if(pathConfigured)settings.setValue(S("gamePath/")+games->currentData().toString(),gamePath->text());}
 void Window::chooseGame(){gamePath->setText(settings.value(S("gamePath/")+games->currentData().toString()).toString());pathConfigured=!gamePath->text().isEmpty();}
 gamelink::Policy Window::selectedPolicy()const{
@@ -125,9 +131,9 @@ void Window::roomAction(bool create){
  QString path=S("/api/v1/rooms");QJsonObject b;
  if(create){b={{S("gameId"),games->currentData().toString()},{S("policy"),policy->currentIndex()==2?S("relay_allowed"):S("preferred_direct")}};}
  else{
-  const auto parts=roomCode->text().trimmed().split(QChar(':'));
+  const auto parts=roomCode->text().trimmed().split(QLatin1Char(':'));
   if(parts.size()!=2 || !QRegularExpression(S("^[0-9a-f]{16}$")).match(parts[0]).hasMatch() || !QRegularExpression(S("^[0-9a-f]{32}$")).match(parts[1]).hasMatch()){log(S("房间码格式为 16 位十六进制 id:32 位邀请密钥"));return;}
-  path+=QChar('/')+parts[0]+S("/join");b={{S("joinKey"),parts[1]}};invite=parts[1];
+  path+=QLatin1Char('/')+parts[0]+S("/join");b={{S("joinKey"),parts[1]}};invite=parts[1];
  }
  mutationBusy=true;
  api(S("POST"),path,b,[this](QJsonDocument doc,QString err){mutationBusy=false;if(!err.isEmpty()){log(err);return;}applyRoom(doc.object());pollRoom();});
@@ -147,7 +153,7 @@ void Window::pollRoom(){
   if(!err.isEmpty()){if(err.contains(S("HTTP 404"))){clearRoom();log(S("服务端房间不存在；已清除本地房间引用，本地 ZeroTier membership 保留"));return;}log(S("房间成员更新失败；VPS 失联不代表游戏通道已断开"));roomPeers={};target->clear();stopProbe();udp.close();probeHealthy=false;return;}
   roomPeers=doc.object()[S("peers")].toArray();
   const auto selected=target->currentData().toString();QStringList choices;
-  for(const auto& v:roomPeers){const auto p=v.toObject();if(p[S("nodeId")].toString()==node || !p[S("authorized")].toBool())continue;for(const auto& a:p[S("virtualIps")].toArray())if(QHostAddress(a.toString()).protocol()==QAbstractSocket::IPv4Protocol)choices<<p[S("nodeId")].toString()+QChar('|')+a.toString();}
+  for(const auto& v:roomPeers){const auto p=v.toObject();if(p[S("nodeId")].toString()==node || !p[S("authorized")].toBool())continue;for(const auto& a:p[S("virtualIps")].toArray())if(QHostAddress(a.toString()).protocol()==QAbstractSocket::IPv4Protocol)choices<<p[S("nodeId")].toString()+QLatin1Char('|')+a.toString();}
   QStringList old;for(int i=0;i<target->count();++i)old<<target->itemData(i).toString();
   if(old!=choices){target->clear();for(const auto& c:choices)target->addItem(c,c);const int i=target->findData(selected);if(i>=0)target->setCurrentIndex(i);}
   render();
@@ -187,7 +193,7 @@ void Window::pollLocal(){
    transport.local(port,token,S("GET"),S("/network"),{},[this,expectedNetwork,info,peers,batchClock](QJsonDocument ns,QString err3){
     localBusy=false;if(expectedNetwork!=network)return;
     if(!err3.isEmpty() || !ns.isArray()){sample={};probeHealthy=false;render();return;}
-    const auto newNode=info[S("address")].toString();const auto key=newNode+QChar('|')+network+QChar('|')+serverUrl->text()+QChar('|')+ztTokenFile->text()+QChar('|')+ztPort->text()+QChar('|')+assignedIPs(ns.array(),network).join(S(","));
+    const auto newNode=info[S("address")].toString();const auto key=newNode+QLatin1Char('|')+network+QLatin1Char('|')+serverUrl->text()+QLatin1Char('|')+ztTokenFile->text()+QLatin1Char('|')+ztPort->text()+QLatin1Char('|')+assignedIPs(ns.array(),network).join(S(","));
     if(key!=contextKey){contextKey=key;joiningAge.restart();probeHealthy=false;stopProbe();udp.close();}
     node=newNode;networks=ns.array();const bool wasReady=sample.serviceAvailable && sample.online && sample.joined;sample={};
     sample.serviceAvailable=true;sample.online=info[S("online")].isBool() && info[S("online")].toBool();
@@ -220,10 +226,10 @@ void Window::render(){
   QStringList ips;for(const auto& ip:p[S("virtualIps")].toArray())ips<<ip.toString();
   const QStringList cells={p[S("userId")].toString()+S(" / ")+id,ips.join(S(", ")),self?S("SELF"):QString::fromLatin1(gamelink::name(decision.state)),QString::fromStdString(decision.physicalPath),self?S("本机"):QString::fromStdString(decision.reason)};
   for(int c=0;c<cells.size();++c)peersTable->setItem(row,c,new QTableWidgetItem(cells[c]));++row;
-  if(!self)states+=id+QChar(' ')+cells[2]+QChar(' ')+cells[3]+QChar(' ')+cells[4]+QChar('\n');
+  if(!self)states+=id+QLatin1Char(' ')+cells[2]+QLatin1Char(' ')+cells[3]+QLatin1Char(' ')+cells[4]+QLatin1Char('\n');
  }
  if(states!=previousStates){previousStates=states;if(!states.isEmpty())log(states.trimmed());}
- const auto id=target->currentData().toString().section(QChar('|'),0,0);targetState=gamelink::classify(peerSample(id)).state;
+ const auto id=target->currentData().toString().section(QLatin1Char('|'),0,0);targetState=gamelink::classify(peerSample(id)).state;
  if(!sample.serviceAvailable || !sample.online || !sample.joined || !sampleAge.isValid() || sampleAge.elapsed()>6000){probeHealthy=false;stopProbe();udp.close();}
  if(probeHealthy && (!probeDone.isValid() || probeDone.elapsed()>10000))probeHealthy=false;
 }
@@ -250,7 +256,7 @@ void Window::bindEcho(){
 void Window::startProbe(){
  if(selectedPolicy()==gamelink::Policy::DirectRequired){log(S("严格直连不支持，拒绝发送探测"));return;}
  if(udp.state()!=QAbstractSocket::BoundState){log(S("先启用本机 UDP echo"));return;}
- probeTarget=QHostAddress(target->currentData().toString().section(QChar('|'),1,1));
+ probeTarget=QHostAddress(target->currentData().toString().section(QLatin1Char('|'),1,1));
  if(probeTarget.protocol()!=QAbstractSocket::IPv4Protocol){log(S("选择已授权房间成员虚拟 IPv4"));return;}
  stopProbe();probeHealthy=false;rtts.clear();probeRunning=true;probeStep();probeTimer.start(750);
 }

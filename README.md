@@ -2,7 +2,7 @@
 
 Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独立安装的官方 ZeroTier One，不实现 VPN 核心、不转发游戏包、不修改 Planet/Moon、系统默认路由或 DNS。
 
-**当前交付：Phase 0 / 1 文档与调查工具完成，Phase 2 服务和客户端源码完成；服务与 C++ 核心已测试，Qt GUI 和真实网络未验证。Direct Required 不可用并明确拒绝。**
+**当前交付：Phase 0 / 1 文档与调查工具完成，Phase 2 服务和客户端源码完成；Go、C++ 核心与 Qt 6 客户端 mock 集成已测试，真实网络未验证。Direct Required 不可用并明确拒绝。**
 
 ## 已实现与边界
 
@@ -11,14 +11,14 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 | 只读环境调查 | 本机已执行；VPS 脚本已提供，未远程执行 |
 | 架构、API、Profile、策略与状态机 | 已落地，见下方文档 |
 | Go 房间 / 认证 / 授权 / ACL / TTL / 限流 | 已实现，单实例、私有网络池、持久化撤销意图、重启清理 |
-| Qt GUI 五个页面 | 源码已实现，本机无 Qt 6，未编译/运行 |
+| Qt GUI 五个页面 | 已在 macOS / Qt 6.11.2 编译并通过离屏集成测试；Windows CI 见 Actions |
 | 本地 ZT API / join / per-node 状态 | 源码已实现；不依赖文本列宽，未与真实 ZT 集成验证 |
 | 虚拟 IPv4 UDP echo / RTT / jitter / loss | 源码已实现，双端手动启用，仅绑定选定虚拟 IP；未实机验证 |
 | 游戏路径 / Windows 进程检测 / 启动 | 手动路径、tasklist、插件示例；尚未游戏实测 |
 | Warcraft III / DST / Overcooked! 2 | 配置均 unverified；Overcooked 只观察，不能替换 Steam P2P/SDR |
 | Strict Direct / WFP / broker | 未实现，GUI/API 拒绝严格模式，不能保证不经 relay |
 | 自动游戏扫描 / LAN 广播验证 / 自启动 | 未实现 |
-| Windows 安装包 | 打包脚本与 Inno Setup 配置已提供，未生成/签名安装包 |
+| Windows 安装包 | Windows CI 自动构建 Qt 6.8.3 ZIP 并检查启动；Inno Setup 配置已提供，EXE 安装器/签名未验证 |
 
 ## 快速验证：不需要 Qt 或 ZeroTier
 
@@ -49,6 +49,21 @@ python3 scripts/make_demo_config.py --directory build/demo
 ```
 
 测试 Alice/Bob 凭证位于权限 0600 的 `build/demo/credentials.json`。仅用于本机 mock：不连接真实 Controller、不分配真实虚拟 IP、不宣称有任何 P2P。GUI Settings 中填入 GameLink token。mock 状态文件不能切换为真实运行，生产必须使用独立路径。
+
+## Qt 6 客户端验证与 CI
+
+保持 Qt 6，最低构建要求 6.4。当前本机使用 Qt 6.11.2；Windows CI 使用固定 Qt 6.8.3 / MSVC 2022。
+
+```sh
+cmake -S . -B build/qt6 -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/clang_64 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/qt6 --parallel 4
+ctest --test-dir build/qt6 --output-on-failure
+QT_QPA_PLATFORM=offscreen ./build/qt6/GameLink --self-test
+```
+
+Homebrew Qt 路径可使用 `/opt/homebrew/opt/qtbase`。启用测试时需要 Qt Test 模块。CTest 包含核心、Qt 客户端 HTTP/房间集成和程序启动三组检查；mock 不操作真实 ZeroTier。`--self-test` 检查五个页面、三个 profile 和 TLS 后端，随后退出；不创建/授权/加入网络。
+
+[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；不是已签名发行版。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
 
 ## Windows GUI 编译
 
