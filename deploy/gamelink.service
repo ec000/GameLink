@@ -1,0 +1,26 @@
+[Unit]
+Description=GameLink control plane API
+After=network-online.target zerotier-one.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gamelink
+Group=gamelink
+WorkingDirectory=/var/lib/gamelink
+ExecStart=/opt/gamelink/gamelink-server --config /etc/gamelink/server.json
+Restart=on-failure
+RestartSec=5
+StateDirectory=gamelink
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/gamelink
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "dst",
+  "name": "Don't Starve Together",
+  "mode": "virtual_ip",
+  "executables": [],
+  "candidate_executables": [
+    "dontstarve_steam.exe",
+    "dontstarve_dedicated_server_nullrenderer.exe"
+  ],
+  "ports": [],
+  "p2p_policy": "preferred_direct",
+  "allow_relay": false,
+  "lan_discovery": false,
+  "steam_api_interception": false,
+  "validation": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "notes": "listen/dedicated 分别验证；用户手动输入虚拟 IP 与实际端口"
+}

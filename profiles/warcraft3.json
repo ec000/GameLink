@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "warcraft3",
+  "name": "Warcraft III",
+  "mode": "virtual_lan",
+  "executables": [],
+  "candidate_executables": [
+    "war3.exe",
+    "Warcraft III.exe"
+  ],
+  "ports": [],
+  "p2p_policy": "preferred_direct",
+  "allow_relay": false,
+  "lan_discovery": true,
+  "steam_api_interception": false,
+  "validation": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "notes": "仅传统 LAN 版本候选；需验证广播发现、TCP 端口与版本差异"
+}

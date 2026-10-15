@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "overcooked2",
+  "name": "Overcooked! 2",
+  "mode": "observe_only",
+  "executables": [],
+  "candidate_executables": [
+    "Overcooked2.exe"
+  ],
+  "ports": [],
+  "p2p_policy": "preferred_direct",
+  "allow_relay": false,
+  "lan_discovery": false,
+  "steam_api_interception": false,
+  "validation": {
+    "status": "unverified",
+    "evidence": []
+  },
+  "notes": "仅观察 Steam/UDP；ZeroTier 不自动替代 Steam P2P/SDR"
+}

@@ -1,0 +1,17 @@
+{
+  "listen": "127.0.0.1:8080",
+  "controllerUrl": "http://127.0.0.1:9993",
+  "controllerTokenFile": "/etc/gamelink/controller-token.secret",
+  "stateFile": "/var/lib/gamelink/state.json",
+  "networks": [
+    "REPLACE_WITH_DEDICATED_PRIVATE_NETWORK_ID"
+  ],
+  "users": [
+    {
+      "id": "alice",
+      "nodeId": "REPLACE_NODE_ID",
+      "tokenHash": "REPLACE_SHA256_OF_RANDOM_32_BYTE_OR_LONGER_TOKEN"
+    }
+  ],
+  "ttlSeconds": 3600
+}

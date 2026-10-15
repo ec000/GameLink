@@ -1,0 +1,18 @@
+build*/
+*.user
+*.log
+server/gamelink-server*
+state*.json
+!deploy/server.example.json
+
+__pycache__/
+*.pyc
+*.secret
+*.lock
+
+# Local deployment configuration and credentials
+.env
+.env.*
+credentials*.json
+server.json
+.DS_Store
