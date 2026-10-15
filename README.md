@@ -18,7 +18,7 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 | Warcraft III / DST / Overcooked! 2 | 配置均 unverified；Overcooked 只观察，不能替换 Steam P2P/SDR |
 | Strict Direct / WFP / broker | 未实现，GUI/API 拒绝严格模式，不能保证不经 relay |
 | 自动游戏扫描 / LAN 广播验证 / 自启动 | 未实现 |
-| Windows 安装包 | Windows CI 自动构建 Qt 6.8.3 ZIP 并检查启动；Inno Setup 配置已提供，EXE 安装器/签名未验证 |
+| Windows 安装包 | Windows CI 已成功生成 Qt 6.8.3 ZIP 并验证独立启动/TLS；EXE 安装器/签名未验证 |
 
 ## 快速验证：不需要 Qt 或 ZeroTier
 
@@ -63,7 +63,7 @@ QT_QPA_PLATFORM=offscreen ./build/qt6/GameLink --self-test
 
 Homebrew Qt 路径可使用 `/opt/homebrew/opt/qtbase`。启用测试时需要 Qt Test 模块。CTest 包含核心、Qt 客户端 HTTP/房间集成和程序启动三组检查；mock 不操作真实 ZeroTier。`--self-test` 检查五个页面、三个 profile 和 TLS 后端，随后退出；不创建/授权/加入网络。
 
-[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；不是已签名发行版。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
+[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；不是已签名发行版。[首个全部通过的运行](https://github.com/ec000/GameLink/actions/runs/38761176168)。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
 
 ## Windows GUI 编译
 

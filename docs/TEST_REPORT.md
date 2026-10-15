@@ -39,8 +39,20 @@
 
 macOS arm64 / Qt 6.11.2 全 GUI 已编译。新增 Qt Test 本机 HTTP fixtures，覆盖本地 token 与 GameLink token 隔离、新网络 join 的安全配置、非 HTTPS/非 loopback origin 拒绝、重定向不转发凭证、持续慢响应的总时限、异常/过大响应脱敏、GUI 创建房间/严格模式拒绝/join/DIRECT→RELAY→UNKNOWN/leave，以及 token 不写设置和日志。
 
-新增 2 秒总请求 deadline，弥补 Qt transfer timeout 只限制无数据期间的空闲时间。增加 GUI 启动自检，检查 profiles、页面与 TLS 可用性。所有本机 Qt 测试通过；Windows 另由 `.github/workflows/build.yml` 编译和打包验证，首次运行结果待记录。
+新增 2 秒总请求 deadline，弥补 Qt transfer timeout 只限制无数据期间的空闲时间。增加 GUI 启动自检，检查 profiles、页面与 TLS 可用性。所有本机 Qt 测试通过；Windows 另由 `.github/workflows/build.yml` 编译和打包验证；最终成功 run 为 38761176168，记录如下。
 
 fixture 截图位于 build/qt6/qt-room-fixture.png，标题明确标为 MOCK，不代表真实 P2P 连接。真实 ZeroTier、游戏、NAT 场景及 Windows 交互式桌面仍未验收。
 
 Windows 首次 run 38759602128 的 MSVC 编译和 3/3 CTest 均通过；安装阶段暴露 relative --prefix 使 Qt deploy_qt_conf 拒绝路径的问题。已将 PowerShell stage 改为绝对路径，并将 CMAKE_INSTALL_BINDIR 设为与 flat ZIP/安装器一致的目录，让 Qt DLL 和 qt.conf 位于 GameLink.exe 旁；修正后重新运行 CI。
+
+第二次 run 38760257190 仍在打包后自检失败：Qt 6.8 的部署支持在加载时捕获了 bin 目录；已在 install 脚本显式设 QT_DEPLOY_BIN_DIR="."，并提前设置安装目录。另根据 windeployqt 的 VCINSTALLDIR 提示，通过 vswhere 查找 MSVC 并复制 x64 CRT DLL，打包前逐项验证 Qt、平台插件、qt.conf 和 CRT 文件。
+
+### 最终 Qt 6 验证结果
+
+- 本机 macOS arm64 / Qt 6.11.2：GUI 编译成功，CTest 3/3 passed（core、qt_client、gui_startup）。
+- [Windows/Linux CI run 38761176168](https://github.com/ec000/GameLink/actions/runs/38761176168)：两个 job 全部成功，源码提交 dfc0fdcf83f727bb08bda7234995adfee720b353。
+- Windows Server 2022 runner / MSVC 2022 / Qt 6.8.3：编译、3/3 CTest、Qt DLL/插件部署、app-local CRT 检查均通过；清除 Qt SDK PATH/插件环境后，stage/GameLink.exe --self-test 成功，验证默认 Windows 平台插件、三个 profile 与 TLS 后端。
+- Linux Ubuntu 24.04：核心测试、Go race/coverage/vet、服务编译、Python 检查和真实进程 mock HTTP 冒烟均通过。
+- Windows ZIP 测试包由成功 run 的 GameLink-Windows-Qt6 artifact 提供，保留 14 天；没有创建正式 Release 或已签名安装器。
+
+这些检查不需要/不修改真实 ZeroTier；实际联机、六组 NAT、Warcraft III/DST/Overcooked 兼容性和严格直连仍未验收。用户 Windows 10/11 桌面与 Inno Setup 安装/卸载也需单独验收。
