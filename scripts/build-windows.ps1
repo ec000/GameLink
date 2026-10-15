@@ -9,8 +9,25 @@ cmake --build build/windows --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 ctest --test-dir build/windows -C Release --output-on-failure
 if ($LASTEXITCODE -ne 0) { throw 'Core/Qt client tests failed' }
-cmake --install build/windows --config Release --prefix "$stage"
-if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
+$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+if (-not (Test-Path $vswhere)) { throw 'Cannot locate MSVC redistributable tools (vswhere)' }
+$vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+if (-not $vsInstall) { throw 'Cannot locate Visual Studio C++ installation' }
+$previousVC = $env:VCINSTALLDIR
+try {
+  $env:VCINSTALLDIR = (Join-Path $vsInstall 'VC') + '\'
+  cmake --install build/windows --config Release --prefix "$stage"
+  if ($LASTEXITCODE -ne 0) { throw 'Qt deployment failed' }
+} finally { $env:VCINSTALLDIR = $previousVC }
+# App-local CRT avoids relying on the runner's globally installed VC runtime.
+$crt = Get-ChildItem (Join-Path $vsInstall 'VC/Redist/MSVC') -Recurse -Directory -Filter 'Microsoft.VC143.CRT' |
+  Where-Object { $_.FullName -match '[\\/]x64[\\/]' } | Select-Object -First 1
+if (-not $crt) { throw 'Cannot locate x64 MSVC CRT DLLs' }
+Copy-Item (Join-Path $crt.FullName '*.dll') $stage -Force
+foreach ($required in @('GameLink.exe', 'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll', 'Qt6Network.dll',
+  'qt.conf', 'plugins/platforms/qwindows.dll', 'msvcp140.dll', 'vcruntime140.dll')) {
+  if (-not (Test-Path (Join-Path $stage $required))) { throw "Missing staged dependency: $required" }
+}
 # Run the deployed application without the SDK's bin directory in PATH.
 $previousPath = $env:PATH
 $previousPlatform = $env:QT_QPA_PLATFORM

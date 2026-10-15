@@ -29,11 +29,11 @@ README 提供完整命令。C++ 无 Qt 核心验证状态、时效、schema、ro
 | DIRECT | 目标 LEAF 活动首选路径、最近接收、双端包证据 | C++ 分类已测；真实路径待测 |
 | RELAY | tunneled 或无 preferred 推断，显示证据范围 | C++ 已测；真实 relay 待测 |
 | UNKNOWN | 缺字段、未知角色、过期/矛盾路径 | C++ 已测 |
-| 断线与重试 | 清 direct、有限时间 traversal、服务恢复继续轮询 | 核心已测；GUI 时序待测 |
+| 断线与重试 | 清 direct、有限时间 traversal、服务恢复继续轮询 | 核心已测；Qt mock 时序已测；真实环境待测 |
 | 网络切换 | 原 echo socket 关闭、探测证据失效、新 IP 重新绑定 | 源码；实机待测 |
 | ZeroTier 重启 | 立即或 TTL 内失效，不沿用旧 direct | 核心；实机待测 |
-| GUI 退出/重启 | 不改变既有网络、清内存 token、TTL 清房间 | GUI 待测；server journal 重启已测 |
-| VPS 不可达 | 房间更新显示错误，既有 ZT 可能继续通信 | 源码；端到端待测 |
+| GUI 退出/重启 | 不改变既有网络、清内存 token、TTL 清房间 | Qt mock 启动/离开已测；server journal 重启已测 |
+| VPS 不可达 | 房间更新显示错误，既有 ZT 可能继续通信 | Qt HTTP 错误处理已测；真实端到端待测 |
 | Strict Direct | API 422、GUI 拒绝；不能标为内核阻断已实现 | API/核心已测，严格流量保证不支持 |
 | Controller 掉线 | 失败保留撤销意图，不分配受影响网络 | 故障注入已测 |
 | 存储失败/磁盘满 | 503 unhealthy，重启先恢复 journal | 待故障注入实机验证 |
@@ -71,4 +71,4 @@ sudo timeout 60 tcpdump -i <vps-interface> -nn -s 96 -w after.pcap 'udp or tcp p
 
 ## Windows 打包验收
 
-干净 Windows 10/11 VM：标准用户安装/启动、Qt DLL/运行库、ZeroTier 单独安装、token 权限错误提示、网络加入/原配置保留、卸载、重启与异常结束。防火墙保持开启，浏览器/Steam 下载继续正常。安装器与 GUI 本次均未实测，不能当作已发布 Windows 成品。
+干净 Windows 10/11 VM：标准用户安装/启动、Qt DLL/运行库、ZeroTier 单独安装、token 权限错误提示、网络加入/原配置保留、卸载、重启与异常结束。防火墙保持开启，浏览器/Steam 下载继续正常。Qt GUI 在本机和 Windows CI 已通过编译、mock 集成和启动检查；安装器、用户桌面交互与真实网络仍未验收，不能当作已发布 Windows 成品。

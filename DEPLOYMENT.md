@@ -71,7 +71,7 @@ GUI manifest 为 asInvoker，不要求管理员。MVP 使用用户 ACL 限制的
 
 README 的 build-windows.ps1 使用 Qt CMake deployment 安装依赖到 build/stage，生成 ZIP；安装 Inno Setup 时可生成 per-user Setup.exe。安装器不捆绑 ZeroTier、不加防火墙规则、不改变路由/DNS、不开机自启。分发前加入应用签名和实际 Qt 许可材料，并在干净 Windows VM 验证运行库、驱动依赖及卸载。
 
-未在当前 macOS 生成 Windows 安装包。卸载仅移除应用；Qt 设置和用户本地 Token 副本需用户手动删除，官方 ZeroTier 网络也由用户管理。GUI 日志限 1000 条，可主动导出，不自动收集游戏流量。
+当前 macOS 可编译验证 Qt 6 客户端；Windows ZIP 由 GitHub Actions 的 windows-2022 / Qt 6.8.3 环境生成，包含清理 SDK 环境后的启动/TLS 自检。该 CI 不代替 Windows 10/11 用户桌面与游戏联机验收，Inno Setup EXE 安装器仍未验证。卸载仅移除应用；Qt 设置和用户本地 Token 副本需用户手动删除，官方 ZeroTier 网络也由用户管理。GUI 日志限 1000 条，可主动导出，不自动收集游戏流量。
 
 ## UDP 探测与防火墙
 

@@ -1,6 +1,6 @@
 # 本次测试报告
 
-日期：2026-10-15（Asia/Shanghai）。执行主机 macOS arm64；Apple Clang 21.0.0、CMake 4.4.3、Go 1.26.3。空工作区起步，无本地 ZeroTier、Qt 6、Windows SDK 或远端访问资料。
+日期：2026-10-15（Asia/Shanghai）。首次交付主机 macOS arm64；Apple Clang 21.0.0、CMake 4.4.3、Go 1.26.3。最初无本地 ZeroTier、Qt 6、Windows SDK 或远端访问资料；后续已补齐 Qt 6 本机和 Windows CI 验证，见文末。
 
 ## 已验证
 
@@ -18,7 +18,7 @@
 ## 未验证/未完成
 
 - `cmake -S . -B build-gui -DGAMELINK_BUILD_GUI=ON` 在 find_package(Qt6) 失败：Qt6Config.cmake 不存在。这是最初缺少 SDK 的结果；后续 Qt 6 验证已完成，见下方记录。
-- 无 Windows 实机、Qt 部署/安装器运行、ZeroTier join 实机、真实成员证书时序/撤销、UDP echo 实机或游戏路径验证。
+- 没有用户 Windows 桌面实机的手动验收、Inno Setup 安装器运行、ZeroTier join 实机、真实成员证书时序/撤销、UDP echo 实机或游戏路径验证。Windows CI 的构建与测试记录另见文末。
 - 六种 NAT 网络矩阵全部未测，不能保证中国大陆 CGNAT 直连成功率。
 - WFP/受限 broker/严格直连逐包限制未实现；严格模式能力恒 false，不是已实现后“测试失败”。
 - 自动游戏扫描、网卡优先级修改、LAN 广播/组播验证、游戏实测端口、Steam 自动会话识别、自启动未实现。
@@ -29,7 +29,7 @@
 ## 最终复验记录
 
 最终 15 项 Go 测试通过，race detector 无报告；包覆盖率 API 79.7%、Controller 78.9%、main/文件锁 8.8%。main 启动与退出另由真实进程冒烟覆盖，该流程不计入 go test 的行覆盖率。
-最终服务重新编译后，真实进程 HTTP 冒烟再次通过；go vet 无报告。Python 语法检查与 shell `sh -n` 通过。PowerShell、Inno Setup 与 Qt/Windows 资源编译未验证。
+最终服务重新编译后，真实进程 HTTP 冒烟再次通过；go vet 无报告。Python 语法检查与 shell `sh -n` 通过。这是首次交付状态；后续已通过 Windows CI 执行 PowerShell、Qt 和 Windows 资源编译，Inno Setup 安装器仍未验证。
 
 交付归档：build/GameLink-0.1.0-source.zip（源码、profiles、文档与测试，不含凭证或构建缓存）；build/SHA256SUMS 包含源码归档与三个服务端二进制的 SHA-256。
 
