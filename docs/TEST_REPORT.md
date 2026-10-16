@@ -64,3 +64,9 @@ Windows 首次 run 38759602128 的 MSVC 编译和 3/3 CTest 均通过；安装�
 本机 Qt 6.11.2 初轮 CTest 3/3 通过，新增 5 个功能测试方法覆盖证据/错误/UI 分离；Windows 原生查询与 0.2.0 ZIP 在 CI 复验后记录。自定义安装、真实 ZeroTier 用户环境/权限矩阵仍需实机确认。
 
 Windows 首轮 38909273554 与补充逐项日志的 38910392945 已完成编译与启动自检；原生服务查询（不存在服务、EventLog Running）及安装/UI 分离测试通过。唯一失败为关闭端口测试过度限定 CONNECTION_REFUSED，Windows Qt 的连接重试也可能先触发总请求超时；测试改为接受实际 CONNECTION_REFUSED 或 REQUEST_TIMEOUT，保留 2 秒硬时限与其独立测试，其他错误仍会失败。
+
+### 0.2 最终结果
+
+[CI run 38910834948](https://github.com/ec000/GameLink/actions/runs/38910834948) 全部通过，代码提交 bc6a4889a787e5c6c00c6e47d368ec610496e668。Windows Qt 6.8.3 / MSVC 2022 的 3/3 CTest、原生服务查询和新增 Home/错误诊断回归测试通过；Qt 客户端含 11 个功能测试方法（加 init/cleanup 为 13 项）。Linux job 同样通过。0.2.0 ZIP 已生成，含 SDK 环境隔离后的程序/TLS 启动检查。
+
+本机 macOS Qt 6.11.2 测试同样通过；原生 Windows 服务查询由 Windows CI 执行，macOS 只测平台无关模型和 API/UI fixtures。用户电脑上的实际 ZeroTier 安装、企业 ACL、自定义/便携目录与不同安装版本仍需实机核对；没有自动启停、修复或修改任何 ZeroTier 服务。

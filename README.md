@@ -19,7 +19,7 @@ API 诊断区显示凭证文件缺失/不可读/无效、非法端口、连接�
 | 只读环境调查 | 本机已执行；VPS 脚本已提供，未远程执行 |
 | 架构、API、Profile、策略与状态机 | 已落地，见下方文档 |
 | Go 房间 / 认证 / 授权 / ACL / TTL / 限流 | 已实现，单实例、私有网络池、持久化撤销意图、重启清理 |
-| 安装 / Windows 服务 / API 诊断 | 独立只读检测与具体错误提示；本轮 Windows CI 结果见测试报告 |
+| 安装 / Windows 服务 / API 诊断 | 独立只读检测与具体错误提示；Windows CI 已通过原生查询与回归测试 |
 | Qt GUI 五个页面 | 已在 macOS / Qt 6.11.2 编译并通过离屏集成测试；Windows CI 见 Actions |
 | 本地 ZT API / join / per-node 状态 | 源码已实现；不依赖文本列宽，未与真实 ZT 集成验证 |
 | 虚拟 IPv4 UDP echo / RTT / jitter / loss | 源码已实现，双端手动启用，仅绑定选定虚拟 IP；未实机验证 |
@@ -72,7 +72,7 @@ QT_QPA_PLATFORM=offscreen ./build/qt6/GameLink --self-test
 
 Homebrew Qt 路径可使用 `/opt/homebrew/opt/qtbase`。启用测试时需要 Qt Test 模块。CTest 包含核心、Qt 客户端 HTTP/房间集成和程序启动三组检查；mock 不操作真实 ZeroTier。`--self-test` 检查五个页面、三个 profile 和 TLS 后端，随后退出；不创建/授权/加入网络。
 
-[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；不是已签名发行版。[首个全部通过的运行](https://github.com/ec000/GameLink/actions/runs/38761176168)。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
+[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；不是已签名发行版。[0.2.0 全部通过的运行](https://github.com/ec000/GameLink/actions/runs/38910834948)。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
 
 ## Windows GUI 编译
 
