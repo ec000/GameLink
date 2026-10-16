@@ -10,6 +10,8 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 默认窗口 1180×840，最小 960×680；内容较长时支持纵向滚动。仍使用 Qt 6 Widgets 与原生窗口边框，不需要额外 UI 框架。`GameLink-Windows-UI-Previews` CI artifact 提供五页与小窗口的渲染截图；截图中的环境/房间是测试数据，不能作为真实联机证据。
 
+[0.3.0 Windows/Linux 验证与下载](https://github.com/ec000/GameLink/actions/runs/38935484115)：Windows 原生平台的中英文字体检查、五页导航、布局回归和 ZIP 独立启动已通过。界面优先使用系统 Segoe / 微软雅黑字体，实际中文回退取决于系统已安装字体。
+
 ## ZeroTier 安装与服务检测（0.2 新增）
 
 Home 分开展示安装检测、Windows 服务、本地 API 和节点 ONLINE/OFFLINE。每 5 秒只读查询 `ZeroTierOneService`，从服务注册路径及常见 Program Files 目录寻找程序；不依赖 Token，不启停/修复服务，不自动提权。

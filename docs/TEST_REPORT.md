@@ -78,3 +78,13 @@ Qt 6 Widgets 改为五页侧边导航与卡片布局，UI 构建独立于网络/
 本机 macOS / Qt 6.11.2 编译通过，初轮 CTest 3/3 通过。Windows Qt 6.8.3 由 CI 构建、测试、打包并上传渲染预览，完成后的结果另行记录。预览使用 fixtures 或未配置状态；未进行用户 Windows 桌面、真实 ZeroTier 或游戏联机验收。
 
 首轮 38934418435 编译、3/3 CTest 和打包成功，但人工检查 Windows 预览发现通用 offscreen 插件缺少字体数据库，英文和中文均显示方框。Windows 测试改用原生 windows 平台插件，增加拉丁/中文字体可用性断言；macOS 继续使用 offscreen。修正后重新运行并检查截图，不将首轮方框截图视为界面验收结果。
+
+### 0.3 最终结果
+
+- [CI run 38935484115](https://github.com/ec000/GameLink/actions/runs/38935484115) 全部成功，代码提交 f4190334252f35b2e777b6551c20a4e6aebe89ca。
+- Windows Server 2022 / MSVC 2022 / Qt 6.8.3：3/3 CTest、原生平台的中英文字体与导航/小窗口布局检查、现有 ZeroTier/房间回归和隔离 SDK 环境的打包启动/TLS 检查全部通过。生成 GameLink-0.3.0-Windows.zip。
+- macOS / Qt 6.11.2：3/3 CTest 通过，Qt 客户端包含 12 个功能测试方法（加 init/cleanup 共 14 项）。另以 QT_SCALE_FACTOR=1.5 重跑导航/布局检查通过，人工查看五页及小窗口预览。
+- Linux job 的核心、Go race/coverage/vet、Python 和真实进程 mock HTTP 冒烟通过。
+- 已检查 Windows 原生预览中的中英文、卡片、导航、表单、房间和诊断；中文可正常显示。字体优先级包含 Segoe UI Variable/Segoe UI/微软雅黑 UI/微软雅黑/黑体，CI 服务器仍可能使用其已安装的其他中文回退字体；未随包分发字体。首轮 offscreen 方框截图已单独保留，交付使用最后成功 run 的包和预览。
+
+Windows 测试桌面会按可用屏幕尺寸限制初始窗口，长页面通过纵向滚动访问；没有隐藏底部操作。用户电脑上的 Windows 11 外观、不同 DPI/字体配置与真实游戏联机仍需实机验收。此版本没有更改 ZeroTier 网络控制、安全策略或游戏支持边界。
