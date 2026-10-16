@@ -93,7 +93,9 @@ void Window::buildUi(){
  setWindowTitle(S("GameLink · 游戏联机"));resize(1180,840);setMinimumSize(960,680);
  auto font = QApplication::font();
 #ifdef Q_OS_WIN
- font.setFamily(S("Segoe UI"));
+ // Keep Chinese UI text in a sans-serif family rather than the system's
+ // legacy SimSun fallback for Latin-only Segoe fonts.
+ font.setFamilies({S("Segoe UI Variable"),S("Segoe UI"),S("Microsoft YaHei UI"),S("Microsoft YaHei"),S("SimHei")});
 #endif
  font.setPointSize(10);setFont(font);
  setStyleSheet(S(R"(
