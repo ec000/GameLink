@@ -5,6 +5,10 @@ Set-Location $root
 $stage = Join-Path $root 'build/stage'
 cmake -S . -B build/windows -G 'Visual Studio 17 2022' -A x64 "-DCMAKE_PREFIX_PATH=$QtPrefix"
 if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
+$versionMatch = Select-String -Path 'build/windows/CMakeCache.txt' -Pattern '^CMAKE_PROJECT_VERSION:STATIC=(.+)$' | Select-Object -First 1
+if (-not $versionMatch) { throw 'Cannot read configured GameLink version' }
+$version = $versionMatch.Matches[0].Groups[1].Value
+$archive = Join-Path $root "build/GameLink-$version-Windows.zip"
 cmake --build build/windows --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 ctest --test-dir build/windows -C Release --output-on-failure
@@ -46,9 +50,9 @@ try {
   $env:QT_QPA_PLATFORM = $previousPlatform
   foreach ($name in $pluginVariables) { [Environment]::SetEnvironmentVariable($name, $previousPlugins[$name], 'Process') }
 }
-Compress-Archive -Path build/stage/* -DestinationPath build/GameLink-0.1.0-Windows.zip -Force
+Compress-Archive -Path build/stage/* -DestinationPath $archive -Force
 if ($InnoCompiler) {
-  & $InnoCompiler "/DStageDir=$root\build\stage" deploy/GameLink.iss
+  & $InnoCompiler "/DStageDir=$root\build\stage" "/DMyAppVersion=$version" deploy/GameLink.iss
   if ($LASTEXITCODE -ne 0) { throw 'Installer generation failed' }
 }
 Write-Output 'Qt 6 package staged and startup checked. Real ZeroTier, Windows desktop interaction and game acceptance tests remain required.'

@@ -1,5 +1,7 @@
 ; Inno Setup 6. Manual opt-in installation; does not bundle or reconfigure ZeroTier.
-#define MyAppVersion "0.1.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.2.0"
+#endif
 #ifndef StageDir
   #define StageDir "..\build\stage"
 #endif
@@ -10,7 +12,7 @@ AppVersion={#MyAppVersion}
 DefaultDirName={localappdata}\Programs\GameLink
 PrivilegesRequired=lowest
 OutputDir=..\build\installer
-OutputBaseFilename=GameLink-0.1.0-Setup
+OutputBaseFilename=GameLink-{#MyAppVersion}-Setup
 Compression=lzma2
 SolidCompression=yes
 UninstallDisplayIcon={app}\GameLink.exe

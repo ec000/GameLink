@@ -1,8 +1,16 @@
-# GameLink 0.1 MVP
+# GameLink 0.2 MVP
 
 Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独立安装的官方 ZeroTier One，不实现 VPN 核心、不转发游戏包、不修改 Planet/Moon、系统默认路由或 DNS。
 
 **当前交付：Phase 0 / 1 文档与调查工具完成，Phase 2 服务和客户端源码完成；Go、C++ 核心与 Qt 6 客户端 mock 集成已测试，真实网络未验证。Direct Required 不可用并明确拒绝。**
+
+## ZeroTier 安装与服务检测（0.2 新增）
+
+Home 分开展示安装检测、Windows 服务、本地 API 和节点 ONLINE/OFFLINE。每 5 秒只读查询 `ZeroTierOneService`，从服务注册路径及常见 Program Files 目录寻找程序；不依赖 Token，不启停/修复服务，不自动提权。
+
+服务已停止、启动中、未注册、查询权限不足会分别显示；仅发现遗留数据目录不会认定已安装。非 Windows 平台显示此项不支持，仍保留 API 检测。自定义/便携安装未出现在服务或常见目录时需要人工核对。
+
+API 诊断区显示凭证文件缺失/不可读/无效、非法端口、连接被拒绝、401/403、404、超时和异常 JSON/schema 等原因。服务 Running 与节点 ONLINE、玩家 DIRECT 分开判断。读取 `%ProgramData%/ZeroTier/One/zerotier-one.port` 后只提示端口；点击“使用检测到的 API 端口”才更新 GameLink 设置，不自动覆盖用户输入。Token 内容不会展示或记录。
 
 ## 已实现与边界
 
@@ -11,6 +19,7 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 | 只读环境调查 | 本机已执行；VPS 脚本已提供，未远程执行 |
 | 架构、API、Profile、策略与状态机 | 已落地，见下方文档 |
 | Go 房间 / 认证 / 授权 / ACL / TTL / 限流 | 已实现，单实例、私有网络池、持久化撤销意图、重启清理 |
+| 安装 / Windows 服务 / API 诊断 | 独立只读检测与具体错误提示；本轮 Windows CI 结果见测试报告 |
 | Qt GUI 五个页面 | 已在 macOS / Qt 6.11.2 编译并通过离屏集成测试；Windows CI 见 Actions |
 | 本地 ZT API / join / per-node 状态 | 源码已实现；不依赖文本列宽，未与真实 ZT 集成验证 |
 | 虚拟 IPv4 UDP echo / RTT / jitter / loss | 源码已实现，双端手动启用，仅绑定选定虚拟 IP；未实机验证 |
@@ -103,6 +112,7 @@ GUI 以普通用户运行；需要可读取的受保护本地 Token 文件，见
 ## 文档
 
 - [架构](ARCHITECTURE.md)、[API](docs/API.md)、[Profile](docs/PROFILE_FORMAT.md)
+- [ZeroTier 安装/服务检测与错误处理](docs/ZEROTIER_DETECTION.md)
 - [研究依据与许可](docs/RESEARCH.md)、[本机评估](docs/ENVIRONMENT_REPORT.md)
 - [安全边界](SECURITY.md)、[部署与安装](DEPLOYMENT.md)
 - [严格直连限制](docs/STRICT_DIRECT.md)、[游戏验证步骤](docs/GAME_PROFILES.md)

@@ -1,5 +1,7 @@
 #include "transport.hpp"
 #include "window.hpp"
+#include "zerotier_environment.hpp"
+#include <QFile>
 #include <QComboBox>
 #include <QElapsedTimer>
 #include <QJsonArray>
@@ -153,7 +155,7 @@ private slots:
         };
         Transport transport; int callbacks = 0; QElapsedTimer elapsed; elapsed.start();
         transport.room(fixture.origin(), apiToken, S("GET"), S("/api/v1/health"), {},
-                       [&](QJsonDocument, QString error) { QVERIFY(!error.isEmpty()); ++callbacks; });
+                       [&](QJsonDocument, QString error) { QVERIFY(error.contains(S("[REQUEST_TIMEOUT]"))); ++callbacks; });
         QTRY_COMPARE_WITH_TIMEOUT(callbacks, 1, 5000);
         QVERIFY(elapsed.elapsed() < 4500);
     }
@@ -173,6 +175,147 @@ private slots:
                            });
             QTRY_VERIFY_WITH_TIMEOUT(done, 4000);
         }
+    }
+
+    void serviceEvidenceAndInstallationAreIndependent() {
+        using namespace gamelink;
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const auto executable = directory.filePath(S("ZeroTier test service.exe"));
+        QFile binary(executable); QVERIFY(binary.open(QIODevice::WriteOnly)); binary.close();
+        QFile portFile(directory.filePath(S("zerotier-one.port")));
+        QVERIFY(portFile.open(QIODevice::WriteOnly)); portFile.write("33199\n"); portFile.close();
+        ServiceInfo service; service.registered = true; service.state = ServiceState::Stopped; service.executable = executable;
+        auto report = inspectInstallation(service, {}, directory.path());
+        QCOMPARE(report.installation, InstallationState::Installed);
+        QCOMPARE(report.service.state, ServiceState::Stopped);
+        QCOMPARE(report.detectedPort, 33199);
+        QVERIFY(!QFile::exists(directory.filePath(S("authtoken.secret")))); // Detection does not require a token.
+        QVERIFY(QFile::remove(executable));
+        QCOMPARE(inspectInstallation(service, {}, directory.path()).installation, InstallationState::BrokenRegistration);
+        service.executable.clear();
+        QCOMPARE(inspectInstallation(service, {}, directory.path()).installation, InstallationState::Registered);
+        service.registered = false; service.state = ServiceState::NotFound;
+        QCOMPARE(inspectInstallation(service, {}, directory.path()).installation, InstallationState::DataOnly);
+        const auto missing = directory.filePath(S("missing"));
+        QCOMPARE(inspectInstallation(service, {}, missing).installation, InstallationState::NotDetected);
+        service.state = ServiceState::AccessDenied;
+        QCOMPARE(inspectInstallation(service, {}, missing).installation, InstallationState::Unknown);
+        QVERIFY(portFile.open(QIODevice::WriteOnly | QIODevice::Truncate)); portFile.write("99999"); portFile.close();
+        report = inspectInstallation(service, {}, directory.path());
+        QCOMPARE(report.detectedPort, 0); QVERIFY(report.portDetail.contains(S("无效")));
+    }
+
+    void nativeServiceStateMappingAndReadOnlyQuery() {
+        using namespace gamelink;
+        QCOMPARE(windowsServiceState(4), ServiceState::Running);
+        QCOMPARE(windowsServiceState(1), ServiceState::Stopped);
+        QCOMPARE(windowsServiceState(2), ServiceState::Starting);
+        QCOMPARE(windowsServiceState(3), ServiceState::Stopping);
+        QCOMPARE(windowsServiceState(5), ServiceState::Changing);
+        QCOMPARE(windowsServiceState(6), ServiceState::Changing);
+        QCOMPARE(windowsServiceState(7), ServiceState::Paused);
+        QCOMPARE(windowsServiceState(99), ServiceState::Unknown);
+        QCOMPARE(windowsServiceError(5), ServiceState::AccessDenied);
+        QCOMPARE(windowsServiceError(1060), ServiceState::NotFound);
+        QCOMPARE(windowsServiceError(1722), ServiceState::Unknown);
+        QCOMPARE(serviceExecutable(S("\"C:\\Program Files\\ZeroTier\\One\\zerotier-one_x64.exe\" -s -Tsecret")), S("C:\\Program Files\\ZeroTier\\One\\zerotier-one_x64.exe"));
+        QCOMPARE(serviceExecutable(S("C:\\Program Files\\ZeroTier\\One\\zerotier-one_x64.exe -s")), S("C:\\Program Files\\ZeroTier\\One\\zerotier-one_x64.exe"));
+        QVERIFY(serviceExecutable(S("\"unterminated")).isEmpty());
+#ifdef Q_OS_WIN
+        const auto missing = queryWindowsService(S("GameLinkInspectionMissing_9028d92f"));
+        QCOMPARE(missing.state, ServiceState::NotFound); QVERIFY(!missing.registered);
+        // Query a built-in service without creating, stopping, starting or reconfiguring anything.
+        const auto eventLog = queryWindowsService(S("EventLog"));
+        QVERIFY(eventLog.registered); QCOMPARE(eventLog.state, ServiceState::Running);
+#else
+        QCOMPARE(queryWindowsService(S("ZeroTierOneService")).state, ServiceState::Unsupported);
+#endif
+    }
+
+    void localTokenAndPortErrorsAreDistinct() {
+        Transport transport; QString error;
+        auto attempt = [&](int port, const QString& file) {
+            error.clear();
+            transport.local(port, file, S("GET"), S("/status"), {},
+                            [&](QJsonDocument, QString message) { error = message; });
+        };
+        attempt(0, S("missing")); QVERIFY(error.contains(S("[INVALID_PORT]")));
+        attempt(9993, {}); QVERIFY(error.contains(S("[TOKEN_PATH_EMPTY]")));
+        attempt(9993, settingsDirectory.filePath(S("no-such-token"))); QVERIFY(error.contains(S("[TOKEN_MISSING]")));
+        attempt(9993, settingsDirectory.path()); QVERIFY(error.contains(S("[TOKEN_INVALID]")));
+        QTemporaryFile empty(settingsDirectory.path() + S("/empty-XXXXXX")); QVERIFY(empty.open());
+        attempt(9993, empty.fileName()); QVERIFY(error.contains(S("[TOKEN_INVALID]")));
+        empty.write(QByteArray(513, 'x')); empty.flush();
+        attempt(9993, empty.fileName()); QVERIFY(error.contains(S("[TOKEN_INVALID]")));
+    }
+
+    void localHttpErrorsAreDistinct() {
+        HttpFixture fixture; QVERIFY(fixture.listen()); Transport transport;
+        QTemporaryFile tokenFile(settingsDirectory.path() + S("/token-XXXXXX"));
+        QVERIFY(tokenFile.open()); tokenFile.write(localToken); tokenFile.flush();
+        for (const int status : {401, 403, 404, 302}) {
+            fixture.handler = [status](const Request&, QTcpSocket* socket) { HttpFixture::reply(socket, "private upstream message", status); };
+            bool done = false; QString error;
+            transport.local(fixture.server.serverPort(), tokenFile.fileName(), S("GET"), S("/status"), {},
+                            [&](QJsonDocument, QString message) { error = message; done = true; });
+            QTRY_VERIFY_WITH_TIMEOUT(done, 4000);
+            QVERIFY(error.contains(status == 404 ? S("[API_NOT_FOUND]") : status == 302 ? S("[REDIRECT_BLOCKED]") : S("[AUTH_FAILED]")));
+            QVERIFY(!error.contains(S("private upstream message"))); QVERIFY(!error.contains(QString::fromUtf8(localToken)));
+        }
+        QTcpServer closed; QVERIFY(closed.listen(QHostAddress::LocalHost, 0)); const auto port = closed.serverPort(); closed.close();
+        bool done = false; QString error;
+        transport.local(port, tokenFile.fileName(), S("GET"), S("/status"), {},
+                        [&](QJsonDocument, QString message) { error = message; done = true; });
+        QTRY_VERIFY_WITH_TIMEOUT(done, 4000);
+        QVERIFY(error.contains(S("[CONNECTION_REFUSED]")));
+    }
+
+    void homeSeparatesRunningServiceFromCredentialsAndNodeOffline() {
+        using namespace gamelink;
+        HttpFixture fixture; QVERIFY(fixture.listen());
+        EnvironmentReport environment;
+        environment.installation = InstallationState::Installed; environment.executable = S("C:/Mock/ZeroTier/One/zerotier-one_x64.exe");
+        environment.service.registered = true; environment.service.state = ServiceState::Running;
+        environment.detectedPort = fixture.server.serverPort();
+        QSettings settings; settings.setValue(S("ztPort"), QString::number(fixture.server.serverPort()));
+        settings.setValue(S("ztTokenFile"), settingsDirectory.filePath(S("missing-file"))); settings.sync();
+        bool reject = true, invalidStatus = false;
+        fixture.handler = [&](const Request& request, QTcpSocket* socket) {
+            if (reject) HttpFixture::reply(socket, "not-your-token", 401);
+            else if (request.path == "/status") HttpFixture::reply(socket, invalidStatus ? QByteArray("{}") : QByteArray(R"({"address":"aaaaaaaaaa","online":false,"clock":100000,"version":"1.fixture"})"));
+            else HttpFixture::reply(socket, "[]");
+        };
+        Window window([&] { return environment; });
+        auto* installed = window.findChild<QLabel*>(S("installationStatus")); QVERIFY(installed);
+        auto* service = window.findChild<QLabel*>(S("serviceStatus")); QVERIFY(service);
+        auto* api = window.findChild<QLabel*>(S("localApiStatus")); QVERIFY(api);
+        QVERIFY(installed->text().contains(S("已发现"))); QVERIFY(service->text().contains(S("Running")));
+        QVERIFY(api->text().contains(S("[TOKEN_MISSING]")));
+        auto* refresh = window.findChild<QPushButton*>(S("refreshEnvironmentButton")); QVERIFY(refresh);
+        auto* port = window.findChild<QLineEdit*>(S("ztPort")); QVERIFY(port);
+        port->setText(S("bad port")); refresh->click(); QVERIFY(api->text().contains(S("[INVALID_PORT]")));
+        QCOMPARE(environment.detectedPort, static_cast<int>(fixture.server.serverPort())); // No auto-overwrite of user input.
+        auto* usePort = window.findChild<QPushButton*>(S("useDetectedPortButton")); QVERIFY(usePort); QVERIFY(usePort->isEnabled());
+        usePort->click(); QCOMPARE(port->text(), QString::number(fixture.server.serverPort()));
+        QTemporaryFile tokenFile(settingsDirectory.path() + S("/token-XXXXXX"));
+        QVERIFY(tokenFile.open()); tokenFile.write(localToken); tokenFile.flush();
+        auto* token = window.findChild<QLineEdit*>(S("ztTokenFile")); QVERIFY(token); token->setText(tokenFile.fileName());
+        refresh->click(); QTRY_VERIFY_WITH_TIMEOUT(api->text().contains(S("[AUTH_FAILED]")), 4000);
+        QVERIFY(service->text().contains(S("Running")));
+        reject = false; refresh->click();
+        QTRY_VERIFY_WITH_TIMEOUT(api->text().contains(S("可访问，认证成功")), 4000);
+        auto* home = window.findChild<QLabel*>(S("homeStatus")); QVERIFY(home);
+        QVERIFY(home->text().contains(S("OFFLINE（API 可访问）"))); QVERIFY(home->text().contains(S("aaaaaaaaaa")));
+        QVERIFY(service->text().contains(S("Running")));
+        invalidStatus = true; refresh->click();
+        QTRY_VERIFY_WITH_TIMEOUT(api->text().contains(S("[API_SCHEMA_UNSUPPORTED]")), 4000);
+        QVERIFY(service->text().contains(S("Running")));
+        auto* log = window.findChild<QPlainTextEdit*>(S("events")); QVERIFY(log);
+        QVERIFY(!log->toPlainText().contains(QString::fromUtf8(localToken))); QVERIFY(!log->toPlainText().contains(S("not-your-token")));
+        environment.service.state = ServiceState::Stopped; refresh->click();
+        QVERIFY(service->text().contains(S("Stopped")));
+        window.show(); installed->setText(S("MOCK 安装/服务/API 测试数据\n") + installed->text()); QCoreApplication::processEvents();
+        QVERIFY(window.grab().save(QCoreApplication::applicationDirPath() + S("/zerotier-detection-fixture.png")));
     }
 
     void guiRoomJoinPathChangesAndLeave() {

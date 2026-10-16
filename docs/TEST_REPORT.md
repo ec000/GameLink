@@ -56,3 +56,9 @@ Windows 首次 run 38759602128 的 MSVC 编译和 3/3 CTest 均通过；安装�
 - Windows ZIP 测试包由成功 run 的 GameLink-Windows-Qt6 artifact 提供，保留 14 天；没有创建正式 Release 或已签名安装器。
 
 这些检查不需要/不修改真实 ZeroTier；实际联机、六组 NAT、Warcraft III/DST/Overcooked 兼容性和严格直连仍未验收。用户 Windows 10/11 桌面与 Inno Setup 安装/卸载也需单独验收。
+
+## 0.2 独立安装/Windows 服务/API 诊断（2026-10-16）
+
+新增 client/platform/zerotier_environment：SCM 查询 ZeroTierOneService，服务注册路径/常见目录检测程序，独立只读端口文件。Home 分开显示安装、服务、API、节点状态，并提供明确错误码与人工核对提示。凭证错误不覆盖服务状态；API 失败清除过期路径证据。
+
+本机 Qt 6.11.2 初轮 CTest 3/3 通过，新增 5 个功能测试方法覆盖证据/错误/UI 分离；Windows 原生查询与 0.2.0 ZIP 在 CI 复验后记录。自定义安装、真实 ZeroTier 用户环境/权限矩阵仍需实机确认。

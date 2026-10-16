@@ -72,3 +72,9 @@ sudo timeout 60 tcpdump -i <vps-interface> -nn -s 96 -w after.pcap 'udp or tcp p
 ## Windows 打包验收
 
 干净 Windows 10/11 VM：标准用户安装/启动、Qt DLL/运行库、ZeroTier 单独安装、token 权限错误提示、网络加入/原配置保留、卸载、重启与异常结束。防火墙保持开启，浏览器/Steam 下载继续正常。Qt GUI 在本机和 Windows CI 已通过编译、mock 集成和启动检查；安装器、用户桌面交互与真实网络仍未验收，不能当作已发布 Windows 成品。
+
+## 0.2 安装与服务诊断验收
+
+Qt 自动化新增安装证据与服务状态分离、遗留数据目录/损坏注册、端口文件无效、服务权限错误分类、Token/端口输入错误、HTTP 401/403/404/重定向/连接拒绝、超时错误码、Home 服务 Running 与 Token 缺失/节点 OFFLINE 同时展示。Windows CI 额外只读查询一个不存在的测试服务与系统 EventLog；不创建或控制服务。
+
+用户 Windows 实机仍需验证实际 ZeroTier 注册/常见目录和受限用户 ACL：已安装且运行、已安装但停止、启动中、服务查询被拒、Token 不可读、错误端口与错误 Token。只有用户自行启停测试机 ZeroTier，GameLink 检测代码不执行这些变更。

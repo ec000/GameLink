@@ -47,11 +47,17 @@ gamelink::Peer parsePeer(const QJsonObject& p){
  return out;
 }
 }
-Window::Window():transport(this),settings(),udp(this){
- setWindowTitle(S("GameLink · ZeroTier P2P MVP"));resize(1040,760);
+Window::Window(gamelink::EnvironmentInspector inspector):environmentInspector(std::move(inspector)),transport(this),settings(),udp(this){
+ setWindowTitle(S("GameLink ")+QCoreApplication::applicationVersion()+S(" · ZeroTier P2P MVP"));resize(1040,760);
  auto* tabs=new QTabWidget;setCentralWidget(tabs);
  auto page=[tabs](const QString& title){auto* w=new QWidget;auto* l=new QVBoxLayout(w);tabs->addTab(w,title);return l;};
- auto* h=page(S("Home"));home=new QLabel(S("等待本地 ZeroTier 状态"));home->setWordWrap(true);h->addWidget(home);
+ auto* h=page(S("Home"));home=new QLabel(S("等待本地 ZeroTier 状态"));home->setWordWrap(true);home->setTextFormat(Qt::PlainText);h->addWidget(home);
+ installationStatus=new QLabel;installationStatus->setObjectName(S("installationStatus"));installationStatus->setWordWrap(true);installationStatus->setTextFormat(Qt::PlainText);h->addWidget(installationStatus);
+ serviceStatus=new QLabel;serviceStatus->setObjectName(S("serviceStatus"));serviceStatus->setWordWrap(true);serviceStatus->setTextFormat(Qt::PlainText);h->addWidget(serviceStatus);
+ localApiStatus=new QLabel;localApiStatus->setObjectName(S("localApiStatus"));localApiStatus->setWordWrap(true);localApiStatus->setTextFormat(Qt::PlainText);h->addWidget(localApiStatus);
+ portStatus=new QLabel;portStatus->setWordWrap(true);portStatus->setTextFormat(Qt::PlainText);h->addWidget(portStatus);
+ button(S("重新检测 ZeroTier"),h,[this]{refreshEnvironment();pollLocal();})->setObjectName(S("refreshEnvironmentButton"));
+ useDetectedPort=button(S("使用检测到的 API 端口"),h,[this]{if(environment.detectedPort){ztPort->setText(QString::number(environment.detectedPort));save();pollLocal();}});useDetectedPort->setObjectName(S("useDetectedPortButton"));
  capability=new QLabel(S("Direct Required：不支持严格流量保证；模式选择会拒绝加入/启动。\n未配置全局网关、DNS 或游戏代理。"));capability->setWordWrap(true);h->addWidget(capability);h->addStretch();
  auto* g=page(S("Games"));games=new QComboBox;g->addWidget(games);gamePath=new QLineEdit;g->addWidget(gamePath);
  button(S("手动选择游戏程序"),g,[this]{const auto p=QFileDialog::getOpenFileName(this,S("选择游戏程序"));if(!p.isEmpty()){gamePath->setText(p);pathConfigured=true;save();}});
@@ -114,7 +120,21 @@ Window::Window():transport(this),settings(),udp(this){
  connect(&expiryTimer,&QTimer::timeout,this,[this]{render();});expiryTimer.start(500);
  connect(&udp,&QUdpSocket::readyRead,this,[this]{datagrams();});
  connect(&probeTimer,&QTimer::timeout,this,[this]{probeStep();});
- joiningAge.start();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
+ connect(&environmentTimer,&QTimer::timeout,this,[this]{refreshEnvironment();});environmentTimer.start(5000);
+ joiningAge.start();refreshEnvironment();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
+}
+void Window::refreshEnvironment(){
+ environment=environmentInspector();
+ installationStatus->setText(S("安装检测：")+gamelink::installationDescription(environment));
+ serviceStatus->setText(S("Windows 服务：")+gamelink::serviceDescription(environment.service));
+ portStatus->setText(environment.portDetail);
+ useDetectedPort->setEnabled(environment.detectedPort>0 && environment.detectedPort!=ztPort->text().toInt());
+}
+void Window::localFailure(const QString& stage,const QString& reason){
+ sample={};sampleAge.invalidate();probeHealthy=false;stopProbe();udp.close();
+ localApiMessage=stage+S("：")+reason;
+ if(lastApiEvent!=localApiMessage){lastApiEvent=localApiMessage;log(S("本地 API ")+localApiMessage);}
+ render();
 }
 void Window::log(const QString& s){events->appendPlainText(QDateTime::currentDateTimeUtc().toString(Qt::ISODate)+QLatin1Char(' ')+s);}
 void Window::save(){settings.setValue(S("server"),serverUrl->text());settings.setValue(S("ztTokenFile"),ztTokenFile->text());settings.setValue(S("ztPort"),ztPort->text());settings.setValue(S("network"),manualNetwork->text());if(pathConfigured)settings.setValue(S("gamePath/")+games->currentData().toString(),gamePath->text());}
@@ -186,16 +206,20 @@ void Window::pollLocal(){
  if(localBusy)return;localBusy=true;const int port=ztPort->text().toInt();const auto token=ztTokenFile->text();const auto expectedNetwork=network;QElapsedTimer batchClock;batchClock.start();
  // Sample peers before status.clock so lastReceive isn't compared to an earlier clock.
  transport.local(port,token,S("GET"),S("/peer"),{},[this,port,token,expectedNetwork,batchClock](QJsonDocument peers,QString err){
-  if(!err.isEmpty() || !peers.isArray()){localBusy=false;sample={};probeHealthy=false;render();return;}
+  if(!err.isEmpty() || !peers.isArray()){localBusy=false;localFailure(S("/peer"),err.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 peers JSON 数组；请检查端口/版本"):err);return;}
   transport.local(port,token,S("GET"),S("/status"),{},[this,port,token,expectedNetwork,peers,batchClock](QJsonDocument status,QString err2){
-   if(!err2.isEmpty() || !status.isObject()){localBusy=false;sample={};probeHealthy=false;render();return;}
+   if(!err2.isEmpty() || !status.isObject()){localBusy=false;localFailure(S("/status"),err2.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 status JSON 对象；请检查端口/版本"):err2);return;}
    const auto info=status.object();
-   transport.local(port,token,S("GET"),S("/network"),{},[this,expectedNetwork,info,peers,batchClock](QJsonDocument ns,QString err3){
-    localBusy=false;if(expectedNetwork!=network)return;
-    if(!err3.isEmpty() || !ns.isArray()){sample={};probeHealthy=false;render();return;}
+   if(!QRegularExpression(S("^[0-9a-f]{10}$")).match(info[S("address")].toString()).hasMatch() || !info[S("online")].isBool() || !info[S("clock")].isDouble()){
+    localBusy=false;localFailure(S("/status"),S("[API_SCHEMA_UNSUPPORTED] status 缺少有效 Node ID、online 或 clock 字段"));return;
+   }
+   transport.local(port,token,S("GET"),S("/network"),{},[this,expectedNetwork,info,peers,batchClock,port,token](QJsonDocument ns,QString err3){
+    localBusy=false;if(expectedNetwork!=network || port!=ztPort->text().toInt() || token!=ztTokenFile->text())return;
+    if(!err3.isEmpty() || !ns.isArray()){localFailure(S("/network"),err3.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 network JSON 数组；请检查端口/版本"):err3);return;}
     const auto newNode=info[S("address")].toString();const auto key=newNode+QLatin1Char('|')+network+QLatin1Char('|')+serverUrl->text()+QLatin1Char('|')+ztTokenFile->text()+QLatin1Char('|')+ztPort->text()+QLatin1Char('|')+assignedIPs(ns.array(),network).join(S(","));
     if(key!=contextKey){contextKey=key;joiningAge.restart();probeHealthy=false;stopProbe();udp.close();}
     node=newNode;networks=ns.array();const bool wasReady=sample.serviceAvailable && sample.online && sample.joined;sample={};
+    apiVersion=info[S("version")].toString();localApiMessage=S("可访问，认证成功");if(lastApiEvent!=localApiMessage){lastApiEvent=localApiMessage;log(S("本地 API 已恢复可访问"));}
     sample.serviceAvailable=true;sample.online=info[S("online")].isBool() && info[S("online")].toBool();
     sample.tcpFallback=info[S("tcpFallbackActive")].toBool();sample.clockMs=static_cast<qint64>(info[S("clock")].toDouble());
     for(const auto& v:networks){const auto n=v.toObject();if(n[S("id")].toString()==network || n[S("nwid")].toString()==network)
@@ -218,9 +242,14 @@ gamelink::Sample Window::peerSample(const QString& id)const{
  return s;
 }
 void Window::render(){
- home->setText(S("ZeroTier %1 · Node %2\n虚拟 IP：%3\n房间：%4 · 策略：%5\nONLINE 仅代表服务状态；玩家路径见 Room。")
-  .arg(sample.serviceAvailable && sample.online && sampleAge.isValid() && sampleAge.elapsed()<=6000?S("ONLINE"):S("DISCONNECTED / STALE"),node,assignedIPs(networks,network).join(S(", ")),roomId,
+ const bool fresh=sample.serviceAvailable && sampleAge.isValid() && sampleAge.elapsed()<=6000;
+ const auto nodeState=fresh ? (sample.online?S("ONLINE"):S("OFFLINE（API 可访问）")) : S("未知 / 状态过期");
+ home->setText(S("节点连接：%1 · Node %2\n虚拟 IP：%3\n房间：%4 · 策略：%5\n节点 ONLINE 与 Windows 服务运行、玩家 DIRECT 是不同状态。")
+  .arg(nodeState,fresh?node:S("未知"),fresh?assignedIPs(networks,network).join(S(", ")):S("未知"),roomId,
        sessionPolicy.isEmpty()?policy->currentText():sessionPolicy));
+ localApiStatus->setText(S("本地 API：")+(localApiMessage.isEmpty()?S("尚未检测"):localApiMessage)+
+  (fresh && !apiVersion.isEmpty()?S(" · ZeroTier ")+apiVersion:QString{})+
+  (!fresh && sample.serviceAvailable?S("；最近样本已过期"):QString{}));
  peersTable->setRowCount(roomPeers.size());QString states;int row=0;
  for(const auto& v:roomPeers){const auto p=v.toObject();const auto id=p[S("nodeId")].toString();const bool self=id==node;const auto decision=gamelink::classify(peerSample(id));
   QStringList ips;for(const auto& ip:p[S("virtualIps")].toArray())ips<<ip.toString();

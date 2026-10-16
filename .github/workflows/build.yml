@@ -61,6 +61,6 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: GameLink-Windows-Qt6
-          path: build/GameLink-0.1.0-Windows.zip
+          path: build/GameLink-*-Windows.zip
           if-no-files-found: error
           retention-days: 14
