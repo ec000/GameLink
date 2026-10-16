@@ -2,7 +2,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QComboBox>
-#include <QTabWidget>
+#include <QStackedWidget>
 #include <QTimer>
 #include <QLabel>
 #include <QSslSocket>
@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     if (parser.isSet(selfTest)) {
         QTimer::singleShot(0, &app, [&] {
             const auto* games = window.findChild<QComboBox*>(QStringLiteral("gameSelector"));
-            const auto* tabs = qobject_cast<QTabWidget*>(window.centralWidget());
+            const auto* tabs = window.findChild<QStackedWidget*>(QStringLiteral("pageStack"));
             const bool profilesReady = games && games->findData(QStringLiteral("warcraft3")) >= 0 &&
                 games->findData(QStringLiteral("dst")) >= 0 && games->findData(QStringLiteral("overcooked2")) >= 0;
             const bool detectionReady = window.findChild<QLabel*>(QStringLiteral("installationStatus")) &&

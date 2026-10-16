@@ -70,3 +70,9 @@ Windows 首轮 38909273554 与补充逐项日志的 38910392945 已完成编译�
 [CI run 38910834948](https://github.com/ec000/GameLink/actions/runs/38910834948) 全部通过，代码提交 bc6a4889a787e5c6c00c6e47d368ec610496e668。Windows Qt 6.8.3 / MSVC 2022 的 3/3 CTest、原生服务查询和新增 Home/错误诊断回归测试通过；Qt 客户端含 11 个功能测试方法（加 init/cleanup 为 13 项）。Linux job 同样通过。0.2.0 ZIP 已生成，含 SDK 环境隔离后的程序/TLS 启动检查。
 
 本机 macOS Qt 6.11.2 测试同样通过；原生 Windows 服务查询由 Windows CI 执行，macOS 只测平台无关模型和 API/UI fixtures。用户电脑上的实际 ZeroTier 安装、企业 ACL、自定义/便携目录与不同安装版本仍需实机核对；没有自动启停、修复或修改任何 ZeroTier 服务。
+
+## 0.3 桌面 UI 更新（2026-10-17）
+
+Qt 6 Widgets 改为五页侧边导航与卡片布局，UI 构建独立于网络/房间逻辑。新增窗口导航回归：点击五个导航、检查当前页与选中状态，在 1180×840 和 960×680 检查字段布局无横向溢出并保存十张 UI 预览。现有安装/服务/API 分离和房间 DIRECT→RELAY→UNKNOWN/leave 集成测试继续执行。
+
+本机 macOS / Qt 6.11.2 编译通过，初轮 CTest 3/3 通过。Windows Qt 6.8.3 由 CI 构建、测试、打包并上传渲染预览，完成后的结果另行记录。预览使用 fixtures 或未配置状态；未进行用户 Windows 桌面、真实 ZeroTier 或游戏联机验收。

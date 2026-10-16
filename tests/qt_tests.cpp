@@ -12,7 +12,9 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QTableWidget>
-#include <QTabWidget>
+#include <QStackedWidget>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
@@ -83,10 +85,46 @@ private slots:
         QVERIFY(settingsDirectory.isValid());
         QCoreApplication::setOrganizationName(S("GameLinkTests"));
         QCoreApplication::setApplicationName(S("QtClientTests"));
+        QCoreApplication::setApplicationVersion(QString::fromLatin1(GAMELINK_VERSION));
         QSettings::setDefaultFormat(QSettings::IniFormat);
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDirectory.path());
     }
     void init() { QSettings settings; settings.clear(); settings.sync(); }
+
+    void sidebarNavigationAndSmallWindowRemainUsable() {
+        Window window([] { return gamelink::EnvironmentReport{}; });
+        auto* stack = window.findChild<QStackedWidget*>(S("pageStack")); QVERIFY(stack);
+        QCOMPARE(stack->count(), 5);
+        window.setWindowTitle(S("GameLink · UI preview / MOCK environment"));
+        window.show(); QCoreApplication::processEvents();
+        const QStringList snapshots = {S("overview"), S("games"), S("room"), S("diagnostics"), S("settings")};
+        for (int i = 0; i < stack->count(); ++i) {
+            auto* navigation = window.findChild<QPushButton*>(S("navigation%1").arg(i)); QVERIFY(navigation);
+            QTest::mouseClick(navigation, Qt::LeftButton);
+            QCOMPARE(stack->currentIndex(), i); QVERIFY(navigation->isChecked());
+            auto* heading = window.findChild<QLabel*>(S("pageTitle%1").arg(i)); QVERIFY(heading);
+            QVERIFY(heading->isVisible());
+            heading->setText(heading->text() + S(" · UI 预览"));
+            QCoreApplication::processEvents();
+            QVERIFY(window.grab().save(QCoreApplication::applicationDirPath() + S("/ui-%1.png").arg(snapshots[i])));
+            window.resize(960, 680); QCoreApplication::processEvents();
+            auto* scroll = qobject_cast<QScrollArea*>(stack->currentWidget()); QVERIFY(scroll);
+            // Vertical scrolling is intentional; fields and actions must fit horizontally.
+            QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
+            const auto inputs = scroll->findChildren<QLineEdit*>();
+            for (const auto* input : inputs) {
+                QVERIFY(input->width() >= 150);
+                const auto position = input->mapTo(scroll->widget(), QPoint(0,0));
+                QVERIFY(position.x() >= 0);
+                QVERIFY(position.x() + input->width() <= scroll->widget()->width());
+            }
+            QVERIFY(window.grab().save(QCoreApplication::applicationDirPath() + S("/ui-%1-small.png").arg(snapshots[i])));
+            window.resize(1180, 840); QCoreApplication::processEvents();
+        }
+        auto* homeNavigation = window.findChild<QPushButton*>(S("navigation0")); homeNavigation->click();
+        auto* home = window.findChild<QLabel*>(S("homeStatus")); QVERIFY(home);
+        QVERIFY(home->isVisible());
+    }
 
     void credentialsAndJoinPayloadStayOnExpectedEndpoints() {
         HttpFixture fixture; QVERIFY(fixture.listen());
@@ -378,7 +416,7 @@ private slots:
         };
         QTRY_VERIFY_WITH_TIMEOUT(hasState(S("DIRECT")), 7000);
         window.show();
-        auto* tabs = qobject_cast<QTabWidget*>(window.centralWidget()); QVERIFY(tabs); tabs->setCurrentIndex(2);
+        auto* tabs = window.findChild<QStackedWidget*>(QStringLiteral("pageStack")); QVERIFY(tabs); tabs->setCurrentIndex(2);
         // Explicitly labeled fixture screenshot; no real network or player evidence.
         window.setWindowTitle(S("GameLink · MOCK integration fixture"));
         auto* roomStatus = window.findChild<QLabel*>(S("roomStatus")); QVERIFY(roomStatus);

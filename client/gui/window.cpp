@@ -21,13 +21,11 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QTableWidget>
-#include <QTabWidget>
+#include <QStyle>
+#include <QColor>
 #include <QVBoxLayout>
 #define S(x) QStringLiteral(x)
 namespace {
-QPushButton* button(const QString& title,QVBoxLayout* layout,std::function<void()> action){
- auto* b=new QPushButton(title);layout->addWidget(b);QObject::connect(b,&QPushButton::clicked,b,std::move(action));return b;
-}
 QStringList assignedIPs(const QJsonArray& networks,const QString& id){
  QStringList out;for(const auto& v:networks){const auto n=v.toObject();if(n[S("id")].toString()==id || n[S("nwid")].toString()==id)
  for(const auto& a:n[S("assignedAddresses")].toArray())out<<a.toString().section(QLatin1Char('/'),0,0);}
@@ -48,63 +46,7 @@ gamelink::Peer parsePeer(const QJsonObject& p){
 }
 }
 Window::Window(gamelink::EnvironmentInspector inspector):environmentInspector(std::move(inspector)),transport(this),settings(),udp(this){
- setWindowTitle(S("GameLink ")+QCoreApplication::applicationVersion()+S(" · ZeroTier P2P MVP"));resize(1040,760);
- auto* tabs=new QTabWidget;setCentralWidget(tabs);
- auto page=[tabs](const QString& title){auto* w=new QWidget;auto* l=new QVBoxLayout(w);tabs->addTab(w,title);return l;};
- auto* h=page(S("Home"));home=new QLabel(S("等待本地 ZeroTier 状态"));home->setWordWrap(true);home->setTextFormat(Qt::PlainText);h->addWidget(home);
- installationStatus=new QLabel;installationStatus->setObjectName(S("installationStatus"));installationStatus->setWordWrap(true);installationStatus->setTextFormat(Qt::PlainText);h->addWidget(installationStatus);
- serviceStatus=new QLabel;serviceStatus->setObjectName(S("serviceStatus"));serviceStatus->setWordWrap(true);serviceStatus->setTextFormat(Qt::PlainText);h->addWidget(serviceStatus);
- localApiStatus=new QLabel;localApiStatus->setObjectName(S("localApiStatus"));localApiStatus->setWordWrap(true);localApiStatus->setTextFormat(Qt::PlainText);h->addWidget(localApiStatus);
- portStatus=new QLabel;portStatus->setWordWrap(true);portStatus->setTextFormat(Qt::PlainText);h->addWidget(portStatus);
- button(S("重新检测 ZeroTier"),h,[this]{refreshEnvironment();pollLocal();})->setObjectName(S("refreshEnvironmentButton"));
- useDetectedPort=button(S("使用检测到的 API 端口"),h,[this]{if(environment.detectedPort){ztPort->setText(QString::number(environment.detectedPort));save();pollLocal();}});useDetectedPort->setObjectName(S("useDetectedPortButton"));
- capability=new QLabel(S("Direct Required：不支持严格流量保证；模式选择会拒绝加入/启动。\n未配置全局网关、DNS 或游戏代理。"));capability->setWordWrap(true);h->addWidget(capability);h->addStretch();
- auto* g=page(S("Games"));games=new QComboBox;g->addWidget(games);gamePath=new QLineEdit;g->addWidget(gamePath);
- button(S("手动选择游戏程序"),g,[this]{const auto p=QFileDialog::getOpenFileName(this,S("选择游戏程序"));if(!p.isEmpty()){gamePath->setText(p);pathConfigured=true;save();}});
- button(S("检测所选游戏进程"),g,[this]{
-#ifdef Q_OS_WIN
-  auto* p=new QProcess(this);connect(p,&QProcess::finished,this,[this,p]{const auto text=QString::fromLocal8Bit(p->readAllStandardOutput());log(text.contains(QFileInfo(gamePath->text()).fileName(),Qt::CaseInsensitive)?S("检测到候选进程；网络支持仍需实测"):S("未检测到所选进程"));p->deleteLater();});
-  p->start(S("tasklist.exe"),{S("/FO"),S("CSV"),S("/NH")});
-#else
-  log(S("进程检测仅实现 Windows tasklist；当前平台未支持"));
-#endif
- });
- button(S("启动所选游戏"),g,[this]{launch();})->setObjectName(S("launchGameButton"));
- auto* gameNote=new QLabel(S("当前配置均为未验证候选。Warcraft III：传统 LAN 版本；DST：手动虚拟 IP；Overcooked! 2：仅观察 Steam/UDP。自动安装扫描与 LAN 广播实测尚未完成。"));gameNote->setWordWrap(true);g->addWidget(gameNote);g->addStretch();
- auto* r=page(S("Room"));roomInfo=new QLabel(S("没有房间"));roomInfo->setWordWrap(true);r->addWidget(roomInfo);
- roomCode=new QLineEdit;roomCode->setPlaceholderText(S("房间码 id:邀请密钥"));r->addWidget(roomCode);
- button(S("创建房间（当前游戏/策略）"),r,[this]{roomAction(true);})->setObjectName(S("createRoomButton"));button(S("加入房间"),r,[this]{roomAction(false);})->setObjectName(S("joinRoomButton"));
- button(S("加入房间的 ZeroTier 网络"),r,[this]{localJoin();})->setObjectName(S("joinNetworkButton"));button(S("离开房间"),r,[this]{leaveRoom();})->setObjectName(S("leaveRoomButton"));
- button(S("复制房间信息"),r,[this]{QApplication::clipboard()->setText(roomId+QLatin1Char(':')+invite);log(S("已复制邀请信息；请仅分享给可信玩家"));});
- peersTable=new QTableWidget(0,5);peersTable->setHorizontalHeaderLabels({S("玩家 / Node ID"),S("虚拟 IP"),S("状态"),S("物理路径"),S("依据")});peersTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);r->addWidget(peersTable);
- auto* d=page(S("Network Diagnostics"));auto* form=new QFormLayout;d->addLayout(form);
- bindIP=new QLineEdit;bindIP->setPlaceholderText(S("本机已分配虚拟 IPv4"));form->addRow(S("探测监听 IP"),bindIP);
- probePort=new QLineEdit(S("39755"));form->addRow(S("UDP echo 端口"),probePort);
- target=new QComboBox;form->addRow(S("目标成员虚拟 IP"),target);
- button(S("启用本机 UDP echo（双端均需启用）"),d,[this]{bindEcho();});button(S("探测目标：10 次 RTT / jitter / loss"),d,[this]{startProbe();});
- probeInfo=new QLabel(S("尚未探测；防火墙规则需管理员按诊断文档添加"));d->addWidget(probeInfo);
- events=new QPlainTextEdit;events->setReadOnly(true);events->setMaximumBlockCount(1000);d->addWidget(events);
- auto* st=page(S("Settings"));auto* sf=new QFormLayout;st->addLayout(sf);
- serverUrl=new QLineEdit(settings.value(S("server"),S("http://127.0.0.1:8080")).toString());sf->addRow(S("GameLink Server"),serverUrl);
- serverToken=new QLineEdit;serverToken->setEchoMode(QLineEdit::Password);sf->addRow(S("GameLink 凭证（仅内存）"),serverToken);
-#ifdef Q_OS_WIN
- const auto tokenDefault=qEnvironmentVariable("LOCALAPPDATA")+S("/GameLink/zerotier-token.secret");
-#else
- const auto tokenDefault=QDir::homePath()+S("/.config/gamelink/zerotier-token.secret");
-#endif
- ztTokenFile=new QLineEdit(settings.value(S("ztTokenFile"),tokenDefault).toString());sf->addRow(S("本地 ZT Token 文件"),ztTokenFile);
- ztPort=new QLineEdit(settings.value(S("ztPort"),S("9993")).toString());sf->addRow(S("本地 API 端口"),ztPort);
- manualNetwork=new QLineEdit(settings.value(S("network")).toString());sf->addRow(S("手动网络 ID（诊断）"),manualNetwork);
- policy=new QComboBox;policy->addItems({S("Preferred Direct"),S("Direct Required — unsupported"),S("Relay Allowed")});sf->addRow(S("新房间策略"),policy);
- button(S("保存设置并刷新"),st,[this]{save();pollLocal();});
- button(S("导出脱敏事件日志"),st,[this]{const auto p=QFileDialog::getSaveFileName(this,S("导出日志"),S("gamelink-events.txt"));if(!p.isEmpty()){QFile f(p);if(f.open(QIODevice::WriteOnly))f.write(events->toPlainText().toUtf8());}});
- home->setObjectName(S("homeStatus"));roomInfo->setObjectName(S("roomStatus"));
- games->setObjectName(S("gameSelector"));policy->setObjectName(S("policySelector"));
- serverUrl->setObjectName(S("serverUrl"));serverToken->setObjectName(S("serverToken"));
- ztTokenFile->setObjectName(S("ztTokenFile"));ztPort->setObjectName(S("ztPort"));
- roomCode->setObjectName(S("roomCode"));events->setObjectName(S("events"));
- peersTable->setObjectName(S("peersTable"));target->setObjectName(S("probeTarget"));
- st->addWidget(new QLabel(S("自动启动暂未实现；不保存任何明文 Token，不自动修改网络/防火墙。")));st->addStretch();
+ buildUi();
  const QDir profileDir(QCoreApplication::applicationDirPath()+S("/profiles"));
  for(const auto& file:profileDir.entryList({S("*.json")},QDir::Files)){
   QFile f(profileDir.filePath(file));if(!f.open(QIODevice::ReadOnly))continue;
@@ -112,7 +54,7 @@ Window::Window(gamelink::EnvironmentInspector inspector):environmentInspector(st
   if(p[S("schema_version")].toInt()!=1 || p[S("steam_api_interception")].toBool(true))continue;
   const auto id=p[S("id")].toString();const auto mode=p[S("mode")].toString();
   if(id.isEmpty() || (mode!=S("virtual_lan") && mode!=S("virtual_ip") && mode!=S("observe_only")))continue;
-  profiles[id]=p;games->addItem(p[S("name")].toString()+S(" · ")+mode+S(" · unverified"),id);
+  profiles[id]=p;games->addItem(p[S("name")].toString()+S(" · 待验证"),id);
  }
  connect(games,&QComboBox::currentIndexChanged,this,[this]{chooseGame();});chooseGame();
  connect(target,&QComboBox::currentIndexChanged,this,[this]{stopProbe();probeHealthy=false;render();});
@@ -136,9 +78,16 @@ void Window::localFailure(const QString& stage,const QString& reason){
  if(lastApiEvent!=localApiMessage){lastApiEvent=localApiMessage;log(S("本地 API ")+localApiMessage);}
  render();
 }
-void Window::log(const QString& s){events->appendPlainText(QDateTime::currentDateTimeUtc().toString(Qt::ISODate)+QLatin1Char(' ')+s);}
+void Window::log(const QString& s){
+ events->appendPlainText(QDateTime::currentDateTimeUtc().toString(Qt::ISODate)+QLatin1Char(' ')+s);
+ lastEvent->setText(s.section(QLatin1Char('\n'),0,0));lastEvent->setToolTip(s);
+}
 void Window::save(){settings.setValue(S("server"),serverUrl->text());settings.setValue(S("ztTokenFile"),ztTokenFile->text());settings.setValue(S("ztPort"),ztPort->text());settings.setValue(S("network"),manualNetwork->text());if(pathConfigured)settings.setValue(S("gamePath/")+games->currentData().toString(),gamePath->text());}
-void Window::chooseGame(){gamePath->setText(settings.value(S("gamePath/")+games->currentData().toString()).toString());pathConfigured=!gamePath->text().isEmpty();}
+void Window::chooseGame(){
+ gamePath->setText(settings.value(S("gamePath/")+games->currentData().toString()).toString());pathConfigured=!gamePath->text().isEmpty();
+ const auto mode=profiles.value(games->currentData().toString())[S("mode")].toString();
+ gameDetails->setText((mode==S("virtual_lan")?S("虚拟局域网 · 在游戏内使用 LAN 房间"):mode==S("virtual_ip")?S("虚拟 IP · 在游戏内手动连接伙伴地址"):S("仅观察 · 沿用游戏原有 Steam / UDP 联机"))+S("\n兼容性未验证，请以实际游戏测试为准。"));
+}
 gamelink::Policy Window::selectedPolicy()const{
  const auto selected=sessionPolicy.isEmpty() ? (policy->currentIndex()==1?S("direct_required"):policy->currentIndex()==2?S("relay_allowed"):S("preferred_direct")) : sessionPolicy;
  return selected==S("direct_required")?gamelink::Policy::DirectRequired:selected==S("relay_allowed")?gamelink::Policy::RelayAllowed:gamelink::Policy::PreferredDirect;
@@ -244,9 +193,15 @@ gamelink::Sample Window::peerSample(const QString& id)const{
 void Window::render(){
  const bool fresh=sample.serviceAvailable && sampleAge.isValid() && sampleAge.elapsed()<=6000;
  const auto nodeState=fresh ? (sample.online?S("ONLINE"):S("OFFLINE（API 可访问）")) : S("未知 / 状态过期");
- home->setText(S("节点连接：%1 · Node %2\n虚拟 IP：%3\n房间：%4 · 策略：%5\n节点 ONLINE 与 Windows 服务运行、玩家 DIRECT 是不同状态。")
-  .arg(nodeState,fresh?node:S("未知"),fresh?assignedIPs(networks,network).join(S(", ")):S("未知"),roomId,
-       sessionPolicy.isEmpty()?policy->currentText():sessionPolicy));
+ nodeValue->setText(fresh?node:S("等待检测"));
+ const auto ips=fresh?assignedIPs(networks,network).join(S(", ")):QString{};
+ ipValue->setText(ips.isEmpty()?S("尚未分配"):ips);
+ roomValue->setText(roomId.isEmpty()?S("尚未加入"):roomId);
+ home->setText(S("节点 %1 · Node %2\n连接策略：%3").arg(nodeState,fresh?node:S("未知"),sessionPolicy.isEmpty()?policy->currentText():sessionPolicy));
+ connectionBadge->setText(fresh?(sample.online?S("节点在线"):S("节点离线")):S("等待连接"));
+ const auto badgeState=fresh?(sample.online?S("online"):S("offline")):S("unknown");
+ if(connectionBadge->property("state").toString()!=badgeState){connectionBadge->setProperty("state",badgeState);connectionBadge->style()->unpolish(connectionBadge);connectionBadge->style()->polish(connectionBadge);}
+ sidebarStatus->setText(fresh?(sample.online?S("●  ZeroTier 节点在线"):S("●  ZeroTier 节点离线")):S("●  本地 API 未就绪"));
  localApiStatus->setText(S("本地 API：")+(localApiMessage.isEmpty()?S("尚未检测"):localApiMessage)+
   (fresh && !apiVersion.isEmpty()?S(" · ZeroTier ")+apiVersion:QString{})+
   (!fresh && sample.serviceAvailable?S("；最近样本已过期"):QString{}));
@@ -254,7 +209,11 @@ void Window::render(){
  for(const auto& v:roomPeers){const auto p=v.toObject();const auto id=p[S("nodeId")].toString();const bool self=id==node;const auto decision=gamelink::classify(peerSample(id));
   QStringList ips;for(const auto& ip:p[S("virtualIps")].toArray())ips<<ip.toString();
   const QStringList cells={p[S("userId")].toString()+S(" / ")+id,ips.join(S(", ")),self?S("SELF"):QString::fromLatin1(gamelink::name(decision.state)),QString::fromStdString(decision.physicalPath),self?S("本机"):QString::fromStdString(decision.reason)};
-  for(int c=0;c<cells.size();++c)peersTable->setItem(row,c,new QTableWidgetItem(cells[c]));++row;
+  for(int c=0;c<cells.size();++c){
+   auto* item=new QTableWidgetItem(cells[c]);item->setToolTip(cells[c]);
+   if(c==2){item->setForeground(QColor(self?S("#637491"):decision.state==gamelink::State::Direct?S("#197054"):decision.state==gamelink::State::Relay?S("#a66a1f"):S("#637491")));auto font=item->font();font.setBold(true);item->setFont(font);}
+   peersTable->setItem(row,c,item);
+  }++row;
   if(!self)states+=id+QLatin1Char(' ')+cells[2]+QLatin1Char(' ')+cells[3]+QLatin1Char(' ')+cells[4]+QLatin1Char('\n');
  }
  if(states!=previousStates){previousStates=states;if(!states.isEmpty())log(states.trimmed());}

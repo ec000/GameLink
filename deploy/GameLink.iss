@@ -1,6 +1,6 @@
 ; Inno Setup 6. Manual opt-in installation; does not bundle or reconfigure ZeroTier.
 #ifndef MyAppVersion
-  #define MyAppVersion "0.2.0"
+  #define MyAppVersion "0.3.0"
 #endif
 #ifndef StageDir
   #define StageDir "..\build\stage"

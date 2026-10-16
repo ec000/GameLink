@@ -64,3 +64,12 @@ jobs:
           path: build/GameLink-*-Windows.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Upload rendered UI previews
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: GameLink-Windows-UI-Previews
+          path: |
+            build/windows/Release/ui-*.png
+            build/windows/Release/*fixture.png
+          if-no-files-found: error
+          retention-days: 14
