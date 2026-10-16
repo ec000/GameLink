@@ -62,3 +62,5 @@ Windows 首次 run 38759602128 的 MSVC 编译和 3/3 CTest 均通过；安装�
 新增 client/platform/zerotier_environment：SCM 查询 ZeroTierOneService，服务注册路径/常见目录检测程序，独立只读端口文件。Home 分开显示安装、服务、API、节点状态，并提供明确错误码与人工核对提示。凭证错误不覆盖服务状态；API 失败清除过期路径证据。
 
 本机 Qt 6.11.2 初轮 CTest 3/3 通过，新增 5 个功能测试方法覆盖证据/错误/UI 分离；Windows 原生查询与 0.2.0 ZIP 在 CI 复验后记录。自定义安装、真实 ZeroTier 用户环境/权限矩阵仍需实机确认。
+
+Windows 首轮 38909273554 与补充逐项日志的 38910392945 已完成编译与启动自检；原生服务查询（不存在服务、EventLog Running）及安装/UI 分离测试通过。唯一失败为关闭端口测试过度限定 CONNECTION_REFUSED，Windows Qt 的连接重试也可能先触发总请求超时；测试改为接受实际 CONNECTION_REFUSED 或 REQUEST_TIMEOUT，保留 2 秒硬时限与其独立测试，其他错误仍会失败。

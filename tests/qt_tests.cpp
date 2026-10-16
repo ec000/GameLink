@@ -267,7 +267,9 @@ private slots:
         transport.local(port, tokenFile.fileName(), S("GET"), S("/status"), {},
                         [&](QJsonDocument, QString message) { error = message; done = true; });
         QTRY_VERIFY_WITH_TIMEOUT(done, 4000);
-        QVERIFY(error.contains(S("[CONNECTION_REFUSED]")));
+        // On Windows Qt can retry a closed-port connection until our total
+        // deadline wins. Report the observed condition, never invent a refusal.
+        QVERIFY2(error.contains(S("[CONNECTION_REFUSED]")) || error.contains(S("[REQUEST_TIMEOUT]")), qPrintable(error));
     }
 
     void homeSeparatesRunningServiceFromCredentialsAndNodeOffline() {
