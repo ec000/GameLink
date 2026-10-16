@@ -2,6 +2,7 @@
 #include "window.hpp"
 #include "zerotier_environment.hpp"
 #include <QFile>
+#include <QFontMetrics>
 #include <QComboBox>
 #include <QElapsedTimer>
 #include <QJsonArray>
@@ -97,6 +98,10 @@ private slots:
         QCOMPARE(stack->count(), 5);
         window.setWindowTitle(S("GameLink · UI preview / MOCK environment"));
         window.show(); QCoreApplication::processEvents();
+        // Catch a fontless platform backend before accepting square-glyph previews.
+        const QFontMetrics fontMetrics(window.font());
+        QVERIFY(fontMetrics.inFontUcs4(U'G'));
+        QVERIFY(fontMetrics.inFontUcs4(U'联'));
         const QStringList snapshots = {S("overview"), S("games"), S("room"), S("diagnostics"), S("settings")};
         for (int i = 0; i < stack->count(); ++i) {
             auto* navigation = window.findChild<QPushButton*>(S("navigation%1").arg(i)); QVERIFY(navigation);

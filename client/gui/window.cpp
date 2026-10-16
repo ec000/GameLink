@@ -194,8 +194,8 @@ void Window::render(){
  const bool fresh=sample.serviceAvailable && sampleAge.isValid() && sampleAge.elapsed()<=6000;
  const auto nodeState=fresh ? (sample.online?S("ONLINE"):S("OFFLINE（API 可访问）")) : S("未知 / 状态过期");
  nodeValue->setText(fresh?node:S("等待检测"));
- const auto ips=fresh?assignedIPs(networks,network).join(S(", ")):QString{};
- ipValue->setText(ips.isEmpty()?S("尚未分配"):ips);
+ const auto virtualIPs=fresh?assignedIPs(networks,network).join(S(", ")):QString{};
+ ipValue->setText(virtualIPs.isEmpty()?S("尚未分配"):virtualIPs);
  roomValue->setText(roomId.isEmpty()?S("尚未加入"):roomId);
  home->setText(S("节点 %1 · Node %2\n连接策略：%3").arg(nodeState,fresh?node:S("未知"),sessionPolicy.isEmpty()?policy->currentText():sessionPolicy));
  connectionBadge->setText(fresh?(sample.online?S("节点在线"):S("节点离线")):S("等待连接"));
