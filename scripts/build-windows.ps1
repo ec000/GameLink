@@ -12,7 +12,10 @@ $archive = Join-Path $root "build/GameLink-$version-Windows.zip"
 cmake --build build/windows --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 ctest --test-dir build/windows -C Release --output-on-failure
-if ($LASTEXITCODE -ne 0) { throw 'Core/Qt client tests failed' }
+if ($LASTEXITCODE -ne 0) {
+  if (Test-Path 'build/windows/qt-client-results.txt') { Get-Content 'build/windows/qt-client-results.txt' }
+  throw 'Core/Qt client tests failed'
+}
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 if (-not (Test-Path $vswhere)) { throw 'Cannot locate MSVC redistributable tools (vswhere)' }
 $vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
