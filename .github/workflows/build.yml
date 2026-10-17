@@ -56,8 +56,15 @@ jobs:
           arch: win64_msvc2022_64
           cache: true
       - name: Compile, test and stage Windows client
+        env:
+          GAMELINK_TEST_ZT_MSI: ${{ runner.temp }}/ZeroTier-One-1.16.2.msi
         shell: pwsh
-        run: ./scripts/build-windows.ps1 -QtPrefix $env:QT_ROOT_DIR
+        run: |
+          # Only inspect this pinned official fixture. Never install it or publish it as an artifact.
+          Invoke-WebRequest -Uri 'https://download.zerotier.com/RELEASES/1.16.2/dist/ZeroTier%20One.msi' -OutFile $env:GAMELINK_TEST_ZT_MSI
+          $expected = '42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670'
+          if ((Get-FileHash $env:GAMELINK_TEST_ZT_MSI -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Official MSI fixture checksum mismatch' }
+          ./scripts/build-windows.ps1 -QtPrefix $env:QT_ROOT_DIR
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: GameLink-Windows-Qt6

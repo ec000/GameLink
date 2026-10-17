@@ -251,6 +251,21 @@ private slots:
         QVERIFY(window.close());
     }
 
+    void nativeOfficialMsiIsAcceptedWithoutExecuting() {
+#ifdef Q_OS_WIN
+        const auto path=qEnvironmentVariable("GAMELINK_TEST_ZT_MSI");
+        if(path.isEmpty())QSKIP("Optional pinned official MSI fixture not configured; no installation is executed.");
+        const auto package=gamelink::nativeInstallerPlatform()->inspect(path);
+        QVERIFY2(package.valid,qPrintable(package.error));
+        QCOMPARE(package.name,S("ZeroTier One")); QCOMPARE(package.version,S("1.16.2"));
+        QVERIFY(gamelink::isProductCode(package.productCode));
+        QVERIFY(package.publisher.contains(S("ZeroTier"),Qt::CaseInsensitive));
+        qInfo().noquote()<<S("Read-only official MSI identity: %1 %2; %3; %4").arg(package.name,package.version,package.publisher,package.productCode);
+#else
+        QSKIP("Authenticode and Windows Installer metadata require Windows; platform-independent mocks run separately.");
+#endif
+    }
+
     void credentialsAndJoinPayloadStayOnExpectedEndpoints() {
         HttpFixture fixture; QVERIFY(fixture.listen());
         fixture.handler = [](const Request&, QTcpSocket* socket) { HttpFixture::reply(socket, "{}"); };
