@@ -40,4 +40,4 @@ API body 8 KiB、请求超时、客户端/Controller 响应大小限制、邀请
 
 用户在设置页选择安装或已安装产品卸载，并确认具体产品/版本后，Windows 通过系统 msiexec 的 runas 请求一次管理员授权；GUI 不提权。安装仅接受本机官方 MSI，通过 Authenticode、证书组织和产品属性检查，并在验证/执行期间持有文件锁；证书链或吊销缓存不足会拒绝。卸载目标来自计算机级 Windows Installer 产品枚举并重新核对，仅传 GUID，不运行注册表卸载命令。没有通用提权命令接口，也不提供跳过验证开关。
 
-安装/卸载影响整个官方产品及其虚拟网卡，不是仅当前房间。GameLink 不主动删除 identity、网络、planet/moon；官方安装器的数据行为需针对实际版本验收，不能据此承诺保留。现阶段不导入用户后续提供的根文件。操作期间清除旧路径证据并拒绝依赖 ZeroTier 的新操作，结束重新读取状态。主程序本身尚未签名，Windows 实际 MSI/UAC/驱动验收待完成；详见 docs/ZEROTIER_INSTALLATION.md。
+安装/卸载影响整个官方产品及其虚拟网卡，不是仅当前房间。GameLink 不主动删除 identity、网络、planet/moon；官方安装器的数据行为需针对实际版本验收，不能据此承诺保留。现阶段不导入用户后续提供的根文件。操作期间清除旧路径证据并拒绝依赖 ZeroTier 的新操作，结束重新读取状态。主程序本身尚未签名，Windows 实际 UAC 与服务/驱动安装卸载验收待完成；详见 docs/ZEROTIER_INSTALLATION.md。

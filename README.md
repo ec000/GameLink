@@ -10,7 +10,7 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 卸载会移除整个官方 ZeroTier 产品并中断本机所有相关连接；GameLink 不主动删除 identity/网络/planet/moon，但官方卸载器的数据保留需实际版本验证。当前不导入或替换 planet/moon，等待用户提供文件/地址后单独集成。
 
-[使用、权限与验证边界](docs/ZEROTIER_INSTALLATION.md)。**0.4 已在本机编译并通过 mock 服务管理/界面测试，Windows 正向安装/卸载与新 ZIP 尚未验证；已有 0.3.0 包不含本功能。**
+[使用、权限与验证边界](docs/ZEROTIER_INSTALLATION.md)。**0.4 已通过本机/Windows 编译、完整 mock 回归、官方 MSI 的只读正向识别与 ZIP 启动检查；实际 UAC、服务/驱动安装卸载与数据保留仍需实机确认。** [0.4.0 Windows/Linux 验证与下载](https://github.com/ec000/GameLink/actions/runs/39026632529)。
 
 ## 桌面界面（0.3 新增）
 
@@ -36,14 +36,14 @@ API 诊断区显示凭证文件缺失/不可读/无效、非法端口、连接�
 | 架构、API、Profile、策略与状态机 | 已落地，见下方文档 |
 | Go 房间 / 认证 / 授权 / ACL / TTL / 限流 | 已实现，单实例、私有网络池、持久化撤销意图、重启清理 |
 | 安装 / Windows 服务 / API 诊断 | 独立只读检测与具体错误提示；Windows CI 已通过原生查询与回归测试 |
-| Qt GUI 五个页面 | 0.4 本机编译、服务管理/界面 mock 通过；完整 HTTP 回归和 Windows 增量验证待完成 |
+| Qt GUI 五个页面 | 0.4 本机/Windows 编译与完整 mock 回归通过，包含服务管理 UI |
 | 本地 ZT API / join / per-node 状态 | 源码已实现；不依赖文本列宽，未与真实 ZT 集成验证 |
 | 虚拟 IPv4 UDP echo / RTT / jitter / loss | 源码已实现，双端手动启用，仅绑定选定虚拟 IP；未实机验证 |
 | 游戏路径 / Windows 进程检测 / 启动 | 手动路径、tasklist、插件示例；尚未游戏实测 |
 | Warcraft III / DST / Overcooked! 2 | 配置均 unverified；Overcooked 只观察，不能替换 Steam P2P/SDR |
 | Strict Direct / WFP / broker | 未实现，GUI/API 拒绝严格模式，不能保证不经 relay |
 | 自动游戏扫描 / LAN 广播验证 / 自启动 | 未实现 |
-| Windows 安装包 | 0.3.0 的 Qt 6.8.3 ZIP 已验证；0.4.0 尚未构建；EXE 安装器/签名未验证 |
+| Windows 安装包 | 0.4.0 Qt 6.8.3 ZIP 已生成并验证独立启动/TLS；EXE 安装器/签名未验证 |
 
 ## 快速验证：不需要 Qt 或 ZeroTier
 

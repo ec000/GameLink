@@ -100,3 +100,15 @@ Windows 测试桌面会按可用屏幕尺寸限制初始窗口，长页面通过
 外网/DNS 与连接器不可用，读取官方资料的权限自动审批两次超时，不能执行远端资料核对或 Windows CI。尚未编译验证本轮 Windows 原生分支，也未验证真实官方 MSI 签名/发布者的正向路径、UAC、服务/驱动安装卸载和数据保留。没有生成或声称已验证 0.4 Windows 包。
 
 补充：本机无网络权限依赖的 9 个客户端测试方法全部通过（含 init/cleanup 共 11 项），core/gui_startup 的 CTest 2/2 通过。请求允许监听本机端口的完整 CTest 执行时，自动权限审批超时，命令未执行，未将其算作测试通过。
+
+### 0.4 最终复验
+
+网络/自动审批恢复后，完整本机 CTest 3/3 通过，源码和文档已提交并推送。首轮 [CI 39026431440](https://github.com/ec000/GameLink/actions/runs/39026431440) 完成 Windows 原生编译、完整回归与 0.4.0 ZIP。
+
+补充固定官方 MSI 正向检查后的 [CI 39026632529](https://github.com/ec000/GameLink/actions/runs/39026632529) 全部成功，代码提交 1eda6302363c54717bbf3f4039ec9dbef158db2b。Windows Server 2022 / MSVC 2022 / Qt 6.8.3 的 3/3 CTest、原生产品枚举/无效包拒绝、服务管理 mock/确认/关闭保护、原有 HTTP/房间回归、Qt/CRT 部署及隔离 SDK 环境的启动/TLS 检查通过。Windows 客户端含 17 个功能方法，加 init/cleanup 共 19 项。Linux 核心、Go race/coverage/vet、Python 和真实进程 mock 冒烟也通过。
+
+CI 只读检查官方 ZeroTier One 1.16.2 MSI，固定 URL 为 https://download.zerotier.com/RELEASES/1.16.2/dist/ZeroTier%20One.msi，SHA-256 42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670。验证有效签名、发布者、产品名、版本与 GUID；不启动或安装第三方 MSI，不将它加入 GameLink artifact。包来源同时与官方下载页和 upstream Windows .aip 产品定义交叉核对。
+
+本机最终 CTest 3/3 通过，Qt 客户端 18 passed / 1 skipped（仅 Windows 的官方 MSI 只读检查）。Windows 原生服务管理卡片截图已检查；build/artifacts/windows-0.4.0-ui/zerotier-installer-fixture.png 明确标记 MOCK。0.4.0 ZIP 已下载到 build/artifacts/windows-0.4.0/，当前源码归档为 build/GameLink-0.4.0-source.zip。
+
+实际 UAC 同意/取消、服务/虚拟网卡驱动安装升级卸载、原配置保留、不同系统策略/证书缓存与重启场景仍需实机验证；本轮没有在用户电脑或 CI 上安装/卸载真实 ZeroTier，也没有修改 planet/moon。
