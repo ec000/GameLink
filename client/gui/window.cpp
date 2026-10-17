@@ -45,7 +45,7 @@ gamelink::Peer parsePeer(const QJsonObject& p){
  return out;
 }
 }
-Window::Window(gamelink::EnvironmentInspector inspector):environmentInspector(std::move(inspector)),transport(this),settings(),udp(this){
+Window::Window(gamelink::EnvironmentInspector inspector,std::shared_ptr<gamelink::InstallerPlatform> installerPlatform):environmentInspector(std::move(inspector)),installer(std::move(installerPlatform),this),transport(this),settings(),udp(this){
  buildUi();
  const QDir profileDir(QCoreApplication::applicationDirPath()+S("/profiles"));
  for(const auto& file:profileDir.entryList({S("*.json")},QDir::Files)){
@@ -63,7 +63,14 @@ Window::Window(gamelink::EnvironmentInspector inspector):environmentInspector(st
  connect(&udp,&QUdpSocket::readyRead,this,[this]{datagrams();});
  connect(&probeTimer,&QTimer::timeout,this,[this]{probeStep();});
  connect(&environmentTimer,&QTimer::timeout,this,[this]{refreshEnvironment();});environmentTimer.start(5000);
- joiningAge.start();refreshEnvironment();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
+ connect(&installer,&gamelink::ZeroTierInstaller::busyChanged,this,[this](bool busy){
+  updateInstallerButtons();
+  if(busy){++serviceGeneration;installerStatus->setText(S("Windows Installer 正在运行，请在安装向导中完成或取消；请勿关闭 GameLink。"));localFailure(S("服务管理"),S("安装/卸载进行中，旧链路证据已清除"));}
+ });
+ connect(&installer,&gamelink::ZeroTierInstaller::completed,this,[this](const gamelink::InstallerResult& result){
+  const auto message=S("ZeroTier 服务管理：")+result.message;refreshInstaller();installerStatus->setText(message);log(message);refreshEnvironment();pollLocal();
+ });
+ joiningAge.start();refreshEnvironment();refreshInstaller();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
 }
 void Window::refreshEnvironment(){
  environment=environmentInspector();
@@ -94,6 +101,7 @@ gamelink::Policy Window::selectedPolicy()const{
 }
 void Window::api(const QString& method,const QString& path,const QJsonObject& body,Transport::Callback cb){transport.room(serverUrl->text(),serverToken->text(),method,path,body,std::move(cb));}
 void Window::roomAction(bool create){
+ if(installer.busy()){log(S("ZeroTier 安装/卸载进行中，请等待安装向导结束。"));return;}
  if(mutationBusy || !roomId.isEmpty()){log(S("请先离开当前房间或等待请求完成"));return;}
  if(policy->currentIndex()==1){log(S("拒绝：Direct Required 无可靠流量控制"));return;}
  if(games->currentData().toString().isEmpty()){log(S("未加载游戏配置"));return;}
@@ -129,6 +137,7 @@ void Window::pollRoom(){
  });
 }
 void Window::localJoin(){
+ if(installer.busy()){log(S("ZeroTier 安装/卸载进行中，暂不能加入网络。"));return;}
  if(selectedPolicy()==gamelink::Policy::DirectRequired){log(S("拒绝严格直连 join：unsupported"));return;}
  const auto n=roomId.isEmpty()?manualNetwork->text().trimmed():network;
  if(!QRegularExpression(S("^[0-9a-f]{16}$")).match(n).hasMatch()){log(S("网络 ID 无效"));return;}
@@ -152,18 +161,21 @@ void Window::clearRoom(){
  roomId.clear();invite.clear();sessionPolicy.clear();network.clear();roomPeers={};target->clear();stopProbe();udp.close();sample={};probeHealthy=false;roomInfo->setText(S("没有房间"));render();
 }
 void Window::pollLocal(){
- if(localBusy)return;localBusy=true;const int port=ztPort->text().toInt();const auto token=ztTokenFile->text();const auto expectedNetwork=network;QElapsedTimer batchClock;batchClock.start();
+ if(installer.busy())return;
+ if(localBusy)return;localBusy=true;const int port=ztPort->text().toInt();const auto token=ztTokenFile->text();const auto expectedNetwork=network;const auto generation=serviceGeneration;QElapsedTimer batchClock;batchClock.start();
  // Sample peers before status.clock so lastReceive isn't compared to an earlier clock.
- transport.local(port,token,S("GET"),S("/peer"),{},[this,port,token,expectedNetwork,batchClock](QJsonDocument peers,QString err){
+ transport.local(port,token,S("GET"),S("/peer"),{},[this,port,token,expectedNetwork,batchClock,generation](QJsonDocument peers,QString err){
+  if(installer.busy() || generation!=serviceGeneration){localBusy=false;return;}
   if(!err.isEmpty() || !peers.isArray()){localBusy=false;localFailure(S("/peer"),err.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 peers JSON 数组；请检查端口/版本"):err);return;}
-  transport.local(port,token,S("GET"),S("/status"),{},[this,port,token,expectedNetwork,peers,batchClock](QJsonDocument status,QString err2){
+  transport.local(port,token,S("GET"),S("/status"),{},[this,port,token,expectedNetwork,peers,batchClock,generation](QJsonDocument status,QString err2){
+   if(installer.busy() || generation!=serviceGeneration){localBusy=false;return;}
    if(!err2.isEmpty() || !status.isObject()){localBusy=false;localFailure(S("/status"),err2.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 status JSON 对象；请检查端口/版本"):err2);return;}
    const auto info=status.object();
    if(!QRegularExpression(S("^[0-9a-f]{10}$")).match(info[S("address")].toString()).hasMatch() || !info[S("online")].isBool() || !info[S("clock")].isDouble()){
     localBusy=false;localFailure(S("/status"),S("[API_SCHEMA_UNSUPPORTED] status 缺少有效 Node ID、online 或 clock 字段"));return;
    }
-   transport.local(port,token,S("GET"),S("/network"),{},[this,expectedNetwork,info,peers,batchClock,port,token](QJsonDocument ns,QString err3){
-    localBusy=false;if(expectedNetwork!=network || port!=ztPort->text().toInt() || token!=ztTokenFile->text())return;
+   transport.local(port,token,S("GET"),S("/network"),{},[this,expectedNetwork,info,peers,batchClock,port,token,generation](QJsonDocument ns,QString err3){
+    localBusy=false;if(installer.busy() || generation!=serviceGeneration || expectedNetwork!=network || port!=ztPort->text().toInt() || token!=ztTokenFile->text())return;
     if(!err3.isEmpty() || !ns.isArray()){localFailure(S("/network"),err3.isEmpty()?S("[API_SCHEMA_UNSUPPORTED] 预期 network JSON 数组；请检查端口/版本"):err3);return;}
     const auto newNode=info[S("address")].toString();const auto key=newNode+QLatin1Char('|')+network+QLatin1Char('|')+serverUrl->text()+QLatin1Char('|')+ztTokenFile->text()+QLatin1Char('|')+ztPort->text()+QLatin1Char('|')+assignedIPs(ns.array(),network).join(S(","));
     if(key!=contextKey){contextKey=key;joiningAge.restart();probeHealthy=false;stopProbe();udp.close();}
@@ -222,6 +234,7 @@ void Window::render(){
  if(probeHealthy && (!probeDone.isValid() || probeDone.elapsed()>10000))probeHealthy=false;
 }
 void Window::launch(){
+ if(installer.busy()){log(S("ZeroTier 安装/卸载进行中，暂不能从 GameLink 启动游戏。"));return;}
  const auto profile=profiles.value(games->currentData().toString());const bool observe=profile[S("mode")].toString()==S("observe_only");
  if(!roomId.isEmpty() && !observe){ // All room peers require a ready path; probe currently covers only selected target.
   for(const auto& v:roomPeers){const auto id=v.toObject()[S("nodeId")].toString();if(id==node)continue;const auto state=gamelink::classify(peerSample(id)).state;if(state==gamelink::State::Disconnected || state==gamelink::State::Connecting || state==gamelink::State::Failed || state==gamelink::State::NatTraversal){log(S("至少一个房间玩家网络未就绪"));return;}}

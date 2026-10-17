@@ -7,7 +7,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFontDatabase>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGridLayout>
@@ -127,6 +126,7 @@ void Window::buildUi(){
  QPushButton[role="primary"] { background:#3864e8; color:#fff; border-color:#3864e8; font-weight:600; }
  QPushButton[role="primary"]:hover { background:#2b55d4; border-color:#2b55d4; }
  QPushButton[role="primary"]:pressed { background:#2147ba; }
+ QPushButton[role="primary"]:disabled { background:#dce5fb; color:#8b9ac0; border-color:#dce5fb; }
  QPushButton[role="nav"] { text-align:left; padding:12px 16px; border:1px solid transparent; background:transparent; color:#56657d; font-size:14px; }
  QPushButton[role="nav"]:hover { background:#e4eaf6; }
  QPushButton[role="nav"]:checked { background:#fff; border-color:#dee5f2; color:#315ed8; font-weight:600; }
@@ -239,6 +239,15 @@ void Window::buildUi(){
  ztTokenFile=new QLineEdit(settings.value(S("ztTokenFile"),tokenDefault).toString());ztTokenFile->setObjectName(S("ztTokenFile"));lf->addRow(S("Token 文件"),ztTokenFile);
  ztPort=new QLineEdit(settings.value(S("ztPort"),S("9993")).toString());ztPort->setObjectName(S("ztPort"));lf->addRow(S("API 端口"),ztPort);
  manualNetwork=new QLineEdit(settings.value(S("network")).toString());manualNetwork->setPlaceholderText(S("16 位网络 ID，仅用于手动诊断"));lf->addRow(S("手动网络"),manualNetwork);
+ auto* service=card(st,S("ZeroTier 服务管理"),S("通过官方 MSI 安装/修复或卸载整个 ZeroTier 产品（含服务与虚拟网卡）。操作时由 Windows 请求管理员授权。"));
+ auto* serviceForm=form(service);
+ installerPath=new QLineEdit;installerPath->setReadOnly(true);installerPath->setObjectName(S("ztMsiPath"));installerPath->setPlaceholderText(S("选择从官方获取的本地 .msi 安装包"));serviceForm->addRow(S("官方安装包"),installerPath);
+ installedProducts=new DropDown;installedProducts->setObjectName(S("ztInstalledProducts"));serviceForm->addRow(S("已安装版本"),installedProducts);
+ connect(installedProducts,&QComboBox::currentIndexChanged,this,[this]{updateInstallerButtons();});
+ installerStatus=text(S("等待 Windows Installer 产品检测"),"muted");installerStatus->setObjectName(S("ztInstallerStatus"));service->addWidget(installerStatus);
+ auto* serviceFiles=row(service);chooseInstaller=action(S("选择 MSI"),serviceFiles,[this]{selectInstaller();},"secondary","ztChooseMsiButton");refreshProducts=action(S("刷新安装列表"),serviceFiles,[this]{refreshInstaller();refreshEnvironment();},"secondary","ztRefreshProductsButton");serviceFiles->addStretch();
+ auto* serviceActions=row(service);installZeroTier=action(S("安装 / 修复服务"),serviceActions,[this]{installService();},"primary","ztInstallButton");uninstallZeroTier=action(S("卸载 ZeroTier"),serviceActions,[this]{uninstallService();},"secondary","ztUninstallButton");serviceActions->addStretch();
+ service->addWidget(text(S("安装包需通过可信签名、ZeroTier 发布者和 MSI 产品校验。GameLink 不自动下载执行程序，也不在此处更改 planet / moon。"),"muted"));
  auto* preferences=card(st,S("连接偏好"));auto* prefs=form(preferences);policy=new DropDown;policy->setObjectName(S("policySelector"));policy->addItems({S("优先直连 / Preferred Direct"),S("严格直连 / Direct Required · 暂不支持"),S("允许中继 / Relay Allowed")});prefs->addRow(S("新房间策略"),policy);
  preferences->addWidget(text(S("严格直连暂不支持，选中后会拒绝加入与启动。不会自动修改默认网关、DNS 或防火墙；自动启动尚未实现。"),"muted"));
  auto* settingsActions=row(st);action(S("保存并刷新"),settingsActions,[this]{save();pollLocal();log(S("设置已保存，正在刷新本地状态"));},"primary");action(S("导出事件日志"),settingsActions,[this]{const auto p=QFileDialog::getSaveFileName(this,S("导出日志"),S("gamelink-events.txt"));if(!p.isEmpty()){QFile f(p);if(f.open(QIODevice::WriteOnly))f.write(events->toPlainText().toUtf8());}});settingsActions->addStretch();st->addStretch();

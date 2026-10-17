@@ -5,6 +5,7 @@
 #include <QStackedWidget>
 #include <QTimer>
 #include <QLabel>
+#include <QPushButton>
 #include <QSslSocket>
 
 int main(int argc, char** argv) {
@@ -28,7 +29,9 @@ int main(int argc, char** argv) {
                 games->findData(QStringLiteral("dst")) >= 0 && games->findData(QStringLiteral("overcooked2")) >= 0;
             const bool detectionReady = window.findChild<QLabel*>(QStringLiteral("installationStatus")) &&
                 window.findChild<QLabel*>(QStringLiteral("serviceStatus")) && window.findChild<QLabel*>(QStringLiteral("localApiStatus"));
-            app.exit(detectionReady && profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
+            const bool installerReady = window.findChild<QPushButton*>(QStringLiteral("ztInstallButton")) &&
+                window.findChild<QPushButton*>(QStringLiteral("ztUninstallButton")) && window.findChild<QLabel*>(QStringLiteral("ztInstallerStatus"));
+            app.exit(installerReady && detectionReady && profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();

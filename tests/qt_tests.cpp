@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLabel>
+#include <QMessageBox>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -76,6 +77,26 @@ public:
     }
 };
 
+class MockInstallerPlatform final : public gamelink::InstallerPlatform {
+public:
+    const QString productCode = S("{12345678-1234-1234-1234-123456789ABC}");
+    gamelink::ProductInventory installed{true, {{productCode, S("ZeroTier One"), S("MOCK 1.0")}}, {}};
+    gamelink::InstallerPackage package{true, S("C:/Mock/ZeroTier.msi"), productCode, S("ZeroTier One"), S("MOCK 1.0"), S("ZeroTier, Inc."), {}};
+    int calls = 0;
+    gamelink::InstallerAction action = gamelink::InstallerAction::Install;
+    gamelink::InstallerDone pending;
+    gamelink::InstallerPackage inspect(const QString& path) override {
+        auto result = package;
+        if (path != package.path) { result.valid = false; result.error = S("[MOCK_MSI_INVALID] unsigned/invalid test package"); }
+        return result;
+    }
+    gamelink::ProductInventory inventory() override { return installed; }
+    void execute(gamelink::InstallerAction requested, const QString&, const QString&, quintptr, QObject*, gamelink::InstallerDone done) override {
+        ++calls; action = requested; pending = std::move(done);
+    }
+    void finish(gamelink::InstallerResult result) { auto callback = std::move(pending); if (callback) callback(result); }
+};
+
 class QtClientTests : public QObject {
     Q_OBJECT
     QTemporaryDir settingsDirectory;
@@ -87,6 +108,7 @@ private slots:
         QCoreApplication::setOrganizationName(S("GameLinkTests"));
         QCoreApplication::setApplicationName(S("QtClientTests"));
         QCoreApplication::setApplicationVersion(QString::fromLatin1(GAMELINK_VERSION));
+        QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, true);
         QSettings::setDefaultFormat(QSettings::IniFormat);
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDirectory.path());
     }
@@ -129,6 +151,104 @@ private slots:
         auto* homeNavigation = window.findChild<QPushButton*>(S("navigation0")); homeNavigation->click();
         auto* home = window.findChild<QLabel*>(S("homeStatus")); QVERIFY(home);
         QVERIFY(home->isVisible());
+    }
+
+    void installerIdentityAndExitCodesAreSpecific() {
+        using namespace gamelink;
+        QVERIFY(isZeroTierProduct(S("ZeroTier One"), S("ZeroTier, Inc.")));
+        QVERIFY(isZeroTierProduct(S("ZeroTier"), S("ZeroTier Inc.")));
+        QVERIFY(!isZeroTierProduct(S("ZeroTier One helper"), S("ZeroTier, Inc.")));
+        QVERIFY(!isZeroTierProduct(S("ZeroTier One"), S("Unrelated Publisher")));
+        QVERIFY(!isZeroTierProduct(S("ZeroTier One"), S("ZeroTier! Inc")));
+        QVERIFY(!isZeroTierProduct(S("ZeroTier One"), S("ZeroTier Inc 假冒")));
+        QVERIFY(!isZeroTierProduct(S("Other App"), S("ZeroTier, Inc.")));
+        QVERIFY(isProductCode(S("{12345678-1234-1234-1234-123456789ABC}")));
+        QVERIFY(!isProductCode(S("{12345678-1234-1234-1234-123456789ABC} /quiet")));
+        QCOMPARE(windowsInstallerResult(0).status, InstallerStatus::Success);
+        QCOMPARE(windowsInstallerResult(3010).status, InstallerStatus::RebootRequired);
+        QCOMPARE(windowsInstallerResult(1641).status, InstallerStatus::RebootRequired);
+        QCOMPARE(windowsInstallerResult(1223).status, InstallerStatus::Cancelled);
+        QCOMPARE(windowsInstallerResult(1602).status, InstallerStatus::Cancelled);
+        for (const auto code : {5U,1603U,1605U,1618U,1619U,1620U,1625U,1638U,9999U}) {
+            const auto result = windowsInstallerResult(code);
+            QCOMPARE(result.status, InstallerStatus::Failed); QCOMPARE(result.code, code);
+            QVERIFY(result.message.contains(QString::number(code)));
+        }
+        QVERIFY(windowsInstallerResult(1618).message.contains(S("另一个安装")));
+        QVERIFY(windowsInstallerResult(1625).message.contains(S("策略")));
+    }
+
+    void installerRejectsInvalidRequestsAndSerializesOperations() {
+        using namespace gamelink;
+        auto platform = std::make_shared<MockInstallerPlatform>(); ZeroTierInstaller installer(platform);
+        QList<InstallerResult> results; QList<bool> busy;
+        connect(&installer,&ZeroTierInstaller::completed,this,[&](const InstallerResult& r){ results.append(r); });
+        connect(&installer,&ZeroTierInstaller::busyChanged,this,[&](bool value){ busy.append(value); });
+        installer.install(S("unsigned.msi")); QCOMPARE(platform->calls,0); QVERIFY(!installer.busy());
+        QVERIFY(results.last().message.contains(S("MOCK_MSI_INVALID")));
+        installer.uninstall(S("arbitrary uninstall command")); QCOMPARE(platform->calls,0);
+        installer.uninstall(S("{00000000-0000-0000-0000-000000000000}")); QCOMPARE(platform->calls,0);
+        installer.install(platform->package.path); QCOMPARE(platform->calls,1); QVERIFY(installer.busy());
+        installer.uninstall(platform->productCode); QCOMPARE(platform->calls,1);
+        platform->finish(windowsInstallerResult(1223)); QVERIFY(!installer.busy()); QCOMPARE(results.last().status,InstallerStatus::Cancelled);
+        installer.uninstall(platform->productCode); QCOMPARE(platform->calls,2); QCOMPARE(platform->action,InstallerAction::Uninstall);
+        platform->finish(windowsInstallerResult(3010)); QVERIFY(!installer.busy()); QCOMPARE(results.last().status,InstallerStatus::RebootRequired);
+        installer.install(platform->package.path); platform->finish(windowsInstallerResult(0));
+        QCOMPARE(results.last().status,InstallerStatus::Success);
+        QCOMPARE(busy,QList<bool>({true,false,true,false,true,false}));
+        platform->installed.error=S("[MOCK_MSI_ENUM] access denied");
+        installer.uninstall(platform->productCode); QCOMPARE(platform->calls,3);
+        QVERIFY(results.last().message.contains(S("MOCK_MSI_ENUM")));
+        // A delayed platform completion must not access a destroyed manager.
+        auto temporary = std::make_unique<ZeroTierInstaller>(platform); temporary->install(platform->package.path);
+        QVERIFY(temporary->busy()); temporary.reset(); platform->finish(windowsInstallerResult(0));
+    }
+
+    void nativeInstallerRejectsUnsignedPackagesWithoutElevation() {
+        using namespace gamelink;
+        auto platform=nativeInstallerPlatform();
+        const auto invalid=platform->inspect(S("relative/not-an-installer.exe")); QVERIFY(!invalid.valid);
+        const auto inventory=platform->inventory();
+#ifdef Q_OS_WIN
+        QVERIFY(inventory.supported);
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const auto path=directory.filePath(S("unsigned.msi")); QFile file(path); QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("NOT AN MSI"); file.close();
+        const auto package=platform->inspect(path); QVERIFY(!package.valid); QVERIFY(package.error.contains(S("MSI_SIGNATURE")));
+        bool done=false;
+        platform->execute(InstallerAction::Install,path,{},0,this,[&](InstallerResult result){
+            QCOMPARE(result.status,InstallerStatus::Failed); QVERIFY(result.message.contains(S("MSI_SIGNATURE"))); done=true;
+        });
+        QVERIFY(done); // Rejected before ShellExecute/UAC, no real installation.
+#else
+        QVERIFY(!inventory.supported); QVERIFY(invalid.error.contains(S("PLATFORM_UNSUPPORTED")));
+#endif
+    }
+
+    void installerUiConfirmsAndKeepsStateUntilCompletion() {
+        using namespace gamelink;
+        auto platform=std::make_shared<MockInstallerPlatform>();
+        Window window([]{ return EnvironmentReport{}; },platform); window.show();
+        auto* stack=window.findChild<QStackedWidget*>(S("pageStack")); QVERIFY(stack); stack->setCurrentIndex(4);
+        auto* uninstall=window.findChild<QPushButton*>(S("ztUninstallButton")); QVERIFY(uninstall); QVERIFY(uninstall->isEnabled());
+        auto* install=window.findChild<QPushButton*>(S("ztInstallButton")); QVERIFY(install); QVERIFY(!install->isEnabled());
+        auto* choose=window.findChild<QPushButton*>(S("ztChooseMsiButton")); QVERIFY(choose); QVERIFY(choose->isEnabled());
+        auto* status=window.findChild<QLabel*>(S("ztInstallerStatus")); QVERIFY(status);
+        auto answer=[](QMessageBox::StandardButton button) {
+            QTimer::singleShot(0,[button]{ auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget()); QVERIFY(box); auto* target=box->button(button); QVERIFY(target); target->click(); });
+        };
+        answer(QMessageBox::No); uninstall->click(); QCOMPARE(platform->calls,0);
+        answer(QMessageBox::Yes); uninstall->click(); QCOMPARE(platform->calls,1);
+        QCOMPARE(platform->action,InstallerAction::Uninstall); QVERIFY(!choose->isEnabled()); QVERIFY(!uninstall->isEnabled());
+        QVERIFY(status->text().contains(S("Windows Installer 正在运行")));
+        answer(QMessageBox::Ok); QVERIFY(!window.close()); // Keeps the operation and locked package alive.
+        platform->installed.products.clear(); platform->finish(windowsInstallerResult(3010));
+        QVERIFY(choose->isEnabled()); QVERIFY(!uninstall->isEnabled()); QVERIFY(status->text().contains(S("重启")));
+        auto* scroll=qobject_cast<QScrollArea*>(stack->currentWidget()); QVERIFY(scroll); scroll->ensureWidgetVisible(choose->parentWidget());
+        status->setText(S("MOCK 服务管理测试 · 未操作真实 ZeroTier\n")+status->text());
+        QCoreApplication::processEvents();
+        QVERIFY(window.grab().save(QCoreApplication::applicationDirPath()+S("/zerotier-installer-fixture.png")));
+        QVERIFY(window.close());
     }
 
     void credentialsAndJoinPayloadStayOnExpectedEndpoints() {

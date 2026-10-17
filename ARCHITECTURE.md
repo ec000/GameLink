@@ -14,7 +14,7 @@ Controller 在 VL2 管理网络配置、成员证书和授权；Root 在 VL1 帮
 
 - client/core：无 Qt 的状态机、探测统计、策略能力判断，可在当前 macOS 编译测试。
 - client/gui：Qt 6 Widgets，Home、Games、Room、Diagnostics、Settings；QNetworkAccessManager 访问本地 API 与房间 API。
-- client/platform：Windows 原生 SCM 只读服务查询与独立安装/端口文件检测；client/platform/windows 含标准用户 manifest、只读网卡/进程诊断脚本。没有提权 GUI、WFP 驱动或防火墙自动修改。
+- client/platform：Windows 原生 SCM 只读服务查询与独立安装/端口文件检测；新增独立 MSI 安装管理器，通过签名/产品验证后单次启动系统 msiexec，使用 Windows UAC，详见 docs/ZEROTIER_INSTALLATION.md；client/platform/windows 含标准用户 manifest、只读网卡/进程诊断脚本。没有提权 GUI、WFP 驱动或防火墙自动修改。
 - server：Go 标准库 HTTP 服务；认证、固定 Node ID 绑定、房间、TTL、限流、日志、持久化撤销意图、Controller adapter。
 - profiles：版本化 JSON。候选进程名、端口与实测验证分开；没有验证记录不得标为已验证支持。
 
