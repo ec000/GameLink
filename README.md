@@ -4,19 +4,21 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 **当前交付：Phase 0 / 1 文档与调查工具完成，Phase 2 服务和客户端源码完成；Go、C++ 核心与 Qt 6 客户端 mock 集成已测试，真实网络未验证。Direct Required 不可用并明确拒绝。**
 
-## 一体化离线安装包（0.5 新增）
+## 一键安装包（0.5 新增）
 
-`GameLink-0.5.0-Setup.exe` 同时包含 GameLink、Qt 运行库和原版官方 **ZeroTier One 1.16.2** MSI。运行 EXE，保留默认的 ZeroTier 安装选项并点击安装即可，无需另行下载 MSI。仅 ZeroTier 服务/驱动安装请求管理员授权；GameLink 安装到当前用户目录。
+`GameLink-0.5.0-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
 
-安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用设置页的明确卸载操作。
+安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用设置页的明确卸载操作。本次下载的原版 MSI 缓存到应用目录，供后续修复；跳过下载时不创建缓存。
 
-构建时核对官方 MSI 的 SHA-256、Authenticode 发布者及产品版本，安装前再次校验固定哈希。随包附带 MPL 2.0、源码链接与 Qt 许可说明。版本/来源/校验值集中在 [打包清单](deploy/zerotier-package.json)，不随在线 latest 地址漂移。后续用户提供的 planet/moon 文件尚未集成。
+官方 Windows 1.16.2 **实际二进制声明 Source-Available 许可**，与默认源码构建的 MPL-only 说明不同。默认包因此不内置/再分发其 MSI；内置离线模式需取得相应再分发授权，不能用 MPL 通知替代。使用官方客户端仍须遵守其条款，商业用途按官方许可办理。核验依据见 [调研记录](docs/RESEARCH.md)，完整通知见 [第三方许可](third_party/zerotier/NOTICE.txt)。
 
-验证详情见 [安装说明](docs/ZEROTIER_INSTALLATION.md) 与 [测试报告](docs/TEST_REPORT.md)。GameLink EXE 尚未签名，Windows 可能显示“未知发布者”；其中 ZeroTier MSI 保留官方签名。
+构建时核对官方 MSI 的 SHA-256、Authenticode 发布者及产品版本；安装时从固定 HTTPS 地址下载并再次校验哈希，禁止使用在线 latest 漂移版本。[来源与校验清单](deploy/zerotier-package.json)。后续用户提供的 planet/moon 文件尚未集成。
+
+验证详情见 [安装说明](docs/ZEROTIER_INSTALLATION.md) 与 [测试报告](docs/TEST_REPORT.md)。GameLink EXE 尚未签名，Windows 可能显示“未知发布者”；ZeroTier MSI 保留官方签名。
 
 ## ZeroTier 服务安装/卸载（0.4 新增）
 
-设置页新增“ZeroTier 服务管理”：选择官方 MSI 后安装/修复服务与虚拟网卡驱动；按本机 Windows Installer 产品列表选择版本卸载。设置页会自动选中随包的官方 MSI，也可手动选择更新版本。安装包需通过可信签名、ZeroTier 发布者和产品校验；操作时由 Windows 单独请求管理员授权，主 GUI 保持普通权限。支持取消、安装冲突、失败和需要重启等结果提示，完成后重新检测。
+设置页新增“ZeroTier 服务管理”：选择官方 MSI 后安装/修复服务与虚拟网卡驱动；按本机 Windows Installer 产品列表选择版本卸载。设置页会自动选中安装时下载缓存的官方 MSI，也可手动选择更新版本。安装包需通过可信签名、ZeroTier 发布者和产品校验；操作时由 Windows 单独请求管理员授权，主 GUI 保持普通权限。支持取消、安装冲突、失败和需要重启等结果提示，完成后重新检测。
 
 卸载会移除整个官方 ZeroTier 产品并中断本机所有相关连接；GameLink 不主动删除 identity/网络/planet/moon，但官方卸载器的数据保留需实际版本验证。当前不导入或替换 planet/moon，等待用户提供文件/地址后单独集成。
 
@@ -53,7 +55,7 @@ API 诊断区显示凭证文件缺失/不可读/无效、非法端口、连接�
 | Warcraft III / DST / Overcooked! 2 | 配置均 unverified；Overcooked 只观察，不能替换 Steam P2P/SDR |
 | Strict Direct / WFP / broker | 未实现，GUI/API 拒绝严格模式，不能保证不经 relay |
 | 自动游戏扫描 / LAN 广播验证 / 自启动 | 未实现 |
-| Windows 安装包 | 0.5 离线 EXE / ZIP 包含官方 ZeroTier MSI；GameLink 尚未代码签名 |
+| Windows 安装包 | 0.5 EXE 可一键从官方源下载安装 ZeroTier；默认 EXE/ZIP 不内置 MSI，尚未代码签名 |
 
 ## 快速验证：不需要 Qt 或 ZeroTier
 
@@ -98,7 +100,7 @@ QT_QPA_PLATFORM=offscreen ./build/qt6/GameLink --self-test
 
 Homebrew Qt 路径可使用 `/opt/homebrew/opt/qtbase`。启用测试时需要 Qt Test 模块。CTest 包含核心、Qt 客户端 HTTP/房间集成和程序启动三组检查；mock 不操作真实 ZeroTier。`--self-test` 检查五个页面、三个 profile 和 TLS 后端，随后退出；不创建/授权/加入网络。
 
-[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；`GameLink-Windows-Installer` 提供离线 EXE，`GameLink-Windows-Installer-Logs` 提供安装测试日志；不是已签名发行版。[0.2.0 全部通过的运行](https://github.com/ec000/GameLink/actions/runs/38910834948)。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
+[GitHub Actions](https://github.com/ec000/GameLink/actions/workflows/build.yml) 编译并测试 Linux 服务和 Windows Qt 6 客户端。通过的 Windows run 中可下载 `GameLink-Windows-Qt6` artifact，包含 ZIP 测试包；`GameLink-Windows-Installer` 提供一键安装 EXE，`GameLink-Windows-Installer-Logs` 提供安装测试日志；不是已签名发行版。[0.2.0 全部通过的运行](https://github.com/ec000/GameLink/actions/runs/38910834948)。打包后移除 SDK 的 PATH/插件环境，再检查程序启动和 TLS，避免依赖开发机环境。
 
 ## Windows GUI 编译
 
@@ -106,7 +108,7 @@ Homebrew Qt 路径可使用 `/opt/homebrew/opt/qtbase`。启用测试时需要 Q
 
 ```powershell
 .\scripts\build-windows.ps1 -QtPrefix 'C:\Qt\6.8.3\msvc2022_64'
-# 生成包含 ZeroTier 的离线 EXE，指定实际的 Inno Setup 编译器：
+# 生成可一键下载并安装 ZeroTier 的 EXE，指定实际的 Inno Setup 编译器：
 .\scripts\build-windows.ps1 -QtPrefix 'C:\Qt\6.8.3\msvc2022_64' -InnoCompiler 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 ```
 

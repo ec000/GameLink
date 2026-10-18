@@ -64,7 +64,7 @@ jobs:
       - name: Exercise bundled installer on disposable Windows runner
         shell: pwsh
         run: ./scripts/test-windows-installer.ps1
-      - name: Upload offline EXE installer
+      - name: Upload one-click EXE installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: GameLink-Windows-Installer

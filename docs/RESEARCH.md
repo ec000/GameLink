@@ -11,7 +11,7 @@
 
 ## 许可检查
 
-[upstream README](https://github.com/zerotier/ZeroTierOne) 将 agent/service 与 nonfree 目录区分；[MPL](https://github.com/zerotier/ZeroTierOne/blob/dev/LICENSE-MPL.txt) 覆盖相应 agent 源码；[nonfree/LICENSE.md](https://github.com/zerotier/ZeroTierOne/blob/dev/nonfree/LICENSE.md) 对 Controller 等组件有独立条款。不能笼统宣称整包都是 MPL。0.4 及此前不打包 ZeroTier；0.5 根据下方固定版本的发行构成与许可核对，附带原版官方 MSI 作为独立组件。VPS 具体版本、构建选项及许可未知，上线/商业分发前针对实际发行包核对。Qt 动态库分发也需要满足实际 Qt 许可，安装方案保留该责任。
+[upstream README](https://github.com/zerotier/ZeroTierOne) 将 agent/service 与 nonfree 目录区分；[MPL](https://github.com/zerotier/ZeroTierOne/blob/dev/LICENSE-MPL.txt) 覆盖相应 agent 源码；[nonfree/LICENSE.md](https://github.com/zerotier/ZeroTierOne/blob/dev/nonfree/LICENSE.md) 对 Controller 等组件有独立条款。不能笼统宣称整包都是 MPL。0.4 及此前不打包 ZeroTier；0.5 核验实际 Windows 二进制后，默认改为一键官方下载，不把 MSI 放入分发包。VPS 具体版本、构建选项及许可未知，上线/商业分发前针对实际发行包核对。Qt 动态库分发也需要满足实际 Qt 许可，安装方案保留该责任。
 
 ## Windows 服务安装管理核对（2026-10-17）
 
@@ -22,10 +22,13 @@
 
 Windows CI 已只读验证该官方 MSI 的正向识别；真实安装/驱动/UAC 流程尚未验收。这是 0.4 的验证范围；0.5 已新增随包分发，见下文。
 
-## 离线分发核对（2026-10-18）
+## Windows 实际二进制许可核对（2026-10-18）
 
-- [官方下载页](https://www.zerotier.com/download/) 与 [changelog](https://docs.zerotier.com/changelog/) 当前 Windows 稳定版为 1.16.2。使用上文固定发布路径和 SHA-256；不使用在线 latest 地址。
-- [1.16.2 README](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/README.md)、[LICENSE.txt](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/LICENSE.txt) 区分 MPL 2.0 agent/service、ext 原始依赖许可和 nonfree。默认发行 agent 自 1.16.0 起不包含 Controller；不添加 ZT_NONFREE 构建或 Controller 功能。
-- [DesktopUI](https://github.com/zerotier/DesktopUI) 使用 MPL 2.0，并保留原始依赖通知。GameLink 不修改官方 MSI；提供完整 MPL、固定 agent 源码/源码归档和 DesktopUI 源码地址，原始 MSI 保留其内置依赖通知，不声称官方背书。通知见 third_party/zerotier。
-- 使用 [Inno Setup PrepareToInstall](https://jrsoftware.org/ishelp/topic_scriptevents.htm) 在应用文件安装前完成先决组件；文件锁和固定 SHA-256 防止临时 MSI 被调包，系统 msiexec 的 runas 请求管理员授权。独立 MSI 不加入 GameLink 卸载链。
-- Windows Qt 6.8.3 动态库保留独立 DLL，可替换兼容版本；随包提供 LGPL/GPL 文本、源码获取地址和 Qt 原始依赖许可索引。此说明仅覆盖当前固定 SDK，切换 Qt 版本需同步检查。
+- [官方下载页](https://www.zerotier.com/download/) 与 [changelog](https://docs.zerotier.com/changelog/) 的 Windows 稳定版为 1.16.2。固定发布路径和 SHA-256 见 deploy/zerotier-package.json。
+- 最初依据 [1.16.2 Release Notes](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/RELEASE-NOTES.md) 中默认构建不含 Controller 的说明，推断官方 MSI 为 MPL-only；**该推断不适用于实际 Windows MSI，已纠正**。
+- [Windows Release x64 工程](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/windows/ZeroTierOne/ZeroTierOne.vcxproj) 明确设置 ZT_NONFREE_CONTROLLER=1 / ZT_NONFREE=1。[one.cpp LICENSE_GRANT](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/one.cpp) 据此选择 Source-Available 声明。
+- 本机只读提取固定 SHA-256 官方 MSI 的内嵌 CAB，实际 zerotierone_x64.exe 包含“Licensed under a Source-Available License for Non-Commercial”声明。Windows 测试另读取客户端 -q -h 帮助核对。不能笼统宣称此官方二进制仅适用 MPL。
+- [nonfree/LICENSE.md](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/nonfree/LICENSE.md) 对产品整合/再分发与商业用途设有独立授权要求；用户尚未提供再分发授权。默认交付因此改为直接从官方源下载并一键安装，不在 EXE/ZIP 内再分发该 MSI。离线构建开关要求明确确认已有相应授权；使用原版客户端仍受其条款约束。
+- MPL 覆盖对应 agent 源码部分；DesktopUI 与原始依赖也有各自许可。third_party/zerotier 保留 MPL、实际 Windows 二进制声明的 Source-Available 许可、原始源码地址和校验值，不声称官方背书。
+- 使用 [Inno Setup PrepareToInstall](https://jrsoftware.org/ishelp/topic_scriptevents.htm) 在应用文件复制前完成先决组件；[CreateDownloadPage](https://jrsoftware.org/ishelp/topic_isxfunc_createdownloadpage.htm) 从官方 HTTPS 下载并验证固定 SHA-256。持有文件锁并再次校验后由系统 msiexec/runas 请求 UAC，独立 MSI 不加入 GameLink 卸载链。
+- Windows Qt 6.8.3 动态库保留独立 DLL，可替换兼容版本；随包提供 LGPL/GPL 文本、源码地址和 Qt 原始依赖许可索引。

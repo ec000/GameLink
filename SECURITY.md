@@ -30,7 +30,7 @@ API body 8 KiB、请求超时、客户端/Controller 响应大小限制、邀请
 
 异常授权/撤销保留持久化意图，网络隔离等待重试。存储故障使 API 返回 503，需要修复并重启；不要删 journal“修好”服务。Controller 断网/停止不必然立即断开已授权玩家。关闭进程不能消除既有证书，数据面安全不能依赖控制平面 TTL。
 
-0.5 起封装原版官方 ZeroTier MSI 为独立先决组件，保留签名与许可/源码通知；不编译或打包 nonfree Controller。不修改游戏/Steam DLL、不注入进程、不关闭防火墙。第三方版本、校验和与许可见 deploy/zerotier-package.json、third_party 和 docs/RESEARCH.md。
+0.5 默认由安装器直接从官方源下载并安装原版 ZeroTier MSI，保留签名并展示许可/源码通知；不将官方 Windows MSI 放入默认分发包。实际 Windows 二进制声明 Source-Available 许可，不能按纯 MPL 二进制再分发；离线内置需取得相应授权。GameLink 不配置/使用其 Controller API。不修改游戏/Steam DLL、不注入进程、不关闭防火墙。第三方版本、校验和与许可见 deploy/zerotier-package.json、third_party 和 docs/RESEARCH.md。
 
 ## 安装与服务只读检测（0.2）
 
@@ -42,10 +42,10 @@ API body 8 KiB、请求超时、客户端/Controller 响应大小限制、邀请
 
 安装/卸载影响整个官方产品及其虚拟网卡，不是仅当前房间。GameLink 不主动删除 identity、网络、planet/moon；官方安装器的数据行为需针对实际版本验收，不能据此承诺保留。现阶段不导入用户后续提供的根文件。操作期间清除旧路径证据并拒绝依赖 ZeroTier 的新操作，结束重新读取状态。主程序本身尚未签名，Windows 实际 UAC 与服务/驱动安装卸载验收待完成；详见 docs/ZEROTIER_INSTALLATION.md。
 
-## 离线安装器（0.5）
+## 一键安装器（0.5）
 
-Inno Setup 安装器使用最低权限和当前用户目录；仅系统 msiexec 通过 runas 安装计算机级服务/虚拟网卡。MSI 来源锁定到官方版本路径，构建先检查固定 SHA-256、有效 Authenticode 签名、证书组织及产品元数据。安装时在临时 MSI 上持有拒绝写入/删除的文件锁并重新校验哈希，然后等待官方安装器真实结果。
+Inno Setup 安装器使用最低权限和当前用户目录；仅系统 msiexec 通过 runas 安装计算机级服务/虚拟网卡。MSI 来源锁定到官方版本路径，构建测试先检查固定 SHA-256、有效 Authenticode 签名、证书组织及产品元数据。安装时从固定官方 HTTPS 地址下载，校验 SHA-256；在临时 MSI 上持有拒绝写入/删除的文件锁并重新校验哈希，然后等待官方安装器真实结果。
 
-默认启用的 ZeroTier 任务在复制 GameLink 文件前执行。只读检查 32/64 位计算机级 MSI 卸载登记和服务注册，相同/较新标准版本直接保留；版本不可识别或非标准服务注册时拒绝覆盖。用户可返回取消该任务。取消 UAC、MSI 失败、服务未注册均不报告成功；禁止自动重启。卸载 GameLink 不执行 ZeroTier 卸载，也不删除其数据。安装后 GUI 会重新验证随包 MSI 后供用户显式修复。
+默认启用的 ZeroTier 任务在复制 GameLink 文件前执行。只读检查 32/64 位计算机级 MSI 卸载登记和服务注册，相同/较新标准版本直接保留；版本不可识别或非标准服务注册时拒绝覆盖。用户可返回取消该任务。取消 UAC、MSI 失败、服务未注册均不报告成功；禁止自动重启。卸载 GameLink 不执行 ZeroTier 卸载，也不删除其数据。安装后 GUI 会重新验证本次下载缓存的 MSI，供用户显式修复。
 
 安装器不生成/复制 Token，不加入网络，不替换 planet/moon。首次官方服务启动会生成自身身份并按官方默认配置运行；这不等于已完成 GameLink 联机配置。当前 GameLink 主程序与 EXE 安装器没有代码签名。

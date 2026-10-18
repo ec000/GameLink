@@ -31,7 +31,7 @@ void Window::refreshInstaller() {
    const auto package=installer.inspect(bundled);
    if(package.valid) {
     installerPath->setText(package.path);
-    installerStatus->setText(S("已验证随包提供的 ZeroTier %1；可直接安装/修复，Windows 将请求管理员授权。").arg(package.version));
+    installerStatus->setText(S("已验证本地缓存的 ZeroTier %1；可直接安装/修复，Windows 将请求管理员授权。").arg(package.version));
    } else installerStatus->setText(package.error);
   }
  }

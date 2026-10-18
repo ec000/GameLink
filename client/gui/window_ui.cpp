@@ -241,7 +241,7 @@ void Window::buildUi(){
  manualNetwork=new QLineEdit(settings.value(S("network")).toString());manualNetwork->setPlaceholderText(S("16 位网络 ID，仅用于手动诊断"));lf->addRow(S("手动网络"),manualNetwork);
  auto* service=card(st,S("ZeroTier 服务管理"),S("通过官方 MSI 安装/修复或卸载整个 ZeroTier 产品（含服务与虚拟网卡）。操作时由 Windows 请求管理员授权。"));
  auto* serviceForm=form(service);
- installerPath=new QLineEdit;installerPath->setReadOnly(true);installerPath->setObjectName(S("ztMsiPath"));installerPath->setPlaceholderText(S("优先使用随包官方 MSI，也可手动选择更新版本"));serviceForm->addRow(S("官方安装包"),installerPath);
+ installerPath=new QLineEdit;installerPath->setReadOnly(true);installerPath->setObjectName(S("ztMsiPath"));installerPath->setPlaceholderText(S("优先使用本地缓存的官方 MSI，也可手动选择更新版本"));serviceForm->addRow(S("官方安装包"),installerPath);
  installedProducts=new DropDown;installedProducts->setObjectName(S("ztInstalledProducts"));serviceForm->addRow(S("已安装版本"),installedProducts);
  connect(installedProducts,&QComboBox::currentIndexChanged,this,[this]{updateInstallerButtons();});
  installerStatus=text(S("等待 Windows Installer 产品检测"),"muted");installerStatus->setObjectName(S("ztInstallerStatus"));service->addWidget(installerStatus);

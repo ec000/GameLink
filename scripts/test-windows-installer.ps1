@@ -39,9 +39,11 @@ try {
     if (Get-Service $serviceName -ErrorAction SilentlyContinue) { throw 'Opt-out unexpectedly installed ZeroTier' }
     if (-not (Select-String -LiteralPath "$logs/01-opt-out.log" -Pattern 'ZT_PREREQ_OPT_OUT' -SimpleMatch -Quiet)) { throw 'Missing opt-out evidence' }
     Remove-GameLink '02-remove-opt-out'
-    # No task override: proves the default selection installs the bundled prerequisite.
+    if (Test-Path (Join-Path $root 'build/stage/prerequisites/ZeroTier-One.msi')) { throw 'Default distribution must not embed the official nonfree MSI without redistribution rights' }
+    # No task override: proves default direct official download and MSI install.
     Run-Setup '03-default-install' @()
     $installedZeroTier = $true
+    if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_OFFICIAL_DOWNLOAD' -SimpleMatch -Quiet)) { throw 'Missing direct official download evidence' }
     if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_SUCCESS' -SimpleMatch -Quiet)) { throw 'Missing real MSI installation evidence' }
     $service = Get-Service $serviceName
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
@@ -50,7 +52,8 @@ try {
     # it from repository defaults (Windows project flags can differ from make).
     $licenseProcess = Start-Process -FilePath (Join-Path $dataDir 'zerotier-one_x64.exe') -ArgumentList @('-q', '-h') -PassThru -Wait -NoNewWindow -RedirectStandardOutput "$logs/zerotier-binary-license.log" -RedirectStandardError "$logs/zerotier-binary-license-error.log"
     $licenseText = (Get-Content "$logs/zerotier-binary-license.log" -Raw) + (Get-Content "$logs/zerotier-binary-license-error.log" -Raw)
-    if ($licenseText -notmatch 'Mozilla Public License' -or $licenseText -match 'Source-Available License') { throw 'Official Windows binary is not an MPL-only agent; redistribution terms require separate review before packaging' }
+    if ($licenseText -notmatch 'Source-Available License|Mozilla Public License') { throw 'Unknown official Windows binary license declaration' }
+    if ($licenseText -match 'Source-Available License') { Write-Host 'Verified: original official Windows binary declares Source-Available terms; default GameLink setup downloads it directly from ZeroTier, without redistributing it.' }
     $identityPath = Join-Path $dataDir 'identity.secret'
     for ($attempt = 0; $attempt -lt 30 -and -not (Test-Path $identityPath); $attempt++) { Start-Sleep -Seconds 1 }
     $identityHash = (Get-FileHash $identityPath -Algorithm SHA256).Hash
@@ -76,7 +79,7 @@ try {
     (Get-Service $serviceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     Remove-GameLink '05-remove-gamelink'
     if ((Get-Service $serviceName).Status -ne 'Running' -or (Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'GameLink uninstall affected ZeroTier' }
-    Write-Host 'PASS: offline EXE opt-out, default real MSI installation, running service/API, bundled GUI startup, idempotent reinstall and independent uninstall.'
+    Write-Host 'PASS: one-click EXE opt-out, default real MSI installation, running service/API, bundled GUI startup, idempotent reinstall and independent uninstall.'
 } finally {
     if (Test-Path (Join-Path $target 'unins000.exe')) { Remove-GameLink 'cleanup-gamelink' }
     if ($installedZeroTier -or (Get-Service $serviceName -ErrorAction SilentlyContinue)) {

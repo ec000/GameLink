@@ -1,6 +1,18 @@
 ﻿[Code]
 var
   ZeroTierRestartRequired: Boolean;
+  ZeroTierDownloaded: Boolean;
+  ZeroTierDownloadPage: TDownloadWizardPage;
+
+procedure InitializeWizard;
+begin
+  ZeroTierDownloadPage := CreateDownloadPage('下载官方 ZeroTier 客户端', '从官方下载固定版本 MSI 并校验 SHA-256，请保持网络连接。', nil);
+end;
+
+function ZeroTierPackageReady: Boolean;
+begin
+  Result := ZeroTierDownloaded;
+end;
 
 function IsNumericVersion(Value: String): Boolean;
 var
@@ -119,13 +131,26 @@ begin
     Result := '检测到不属于标准 MSI 安装的 ZeroTier 服务。请返回取消勾选 ZeroTier 以保留已有服务，或先使用原安装方式管理它。'; Exit;
   end;
   try
+#ifdef BundleZeroTier
     ExtractTemporaryFile('ZeroTier-One.msi');
+#else
+    ZeroTierDownloadPage.Clear;
+    ZeroTierDownloadPage.Add('{#ZeroTierURL}', 'ZeroTier-One.msi', '{#ZeroTierSHA256}');
+    ZeroTierDownloadPage.Show;
+    try
+      ZeroTierDownloadPage.Download;
+      ZeroTierDownloaded := True;
+      Log('ZT_PREREQ_OFFICIAL_DOWNLOAD');
+    finally
+      ZeroTierDownloadPage.Hide;
+    end;
+#endif
     MsiPath := ExpandConstant('{tmp}\ZeroTier-One.msi');
     { $20 = fmOpenRead + fmShareDenyWrite; keep the verified file locked during UAC/MSI. }
     PackageLock := TFileStream.Create(MsiPath, $20);
     try
       if Lowercase(GetSHA256OfFile(MsiPath)) <> '{#ZeroTierSHA256}' then begin
-        Result := 'ZeroTier 安装包校验失败，已停止安装。请重新获取完整 GameLink 安装包。'; Exit;
+        Result := 'ZeroTier 安装包校验失败，已停止安装。请重新下载安装器或重试官方下载。'; Exit;
       end;
       if WizardSilent then UiFlags := '/qn' else UiFlags := '/qb';
       Parameters := '/i "' + MsiPath + '" ' + UiFlags + ' /norestart REBOOT=ReallySuppress';
@@ -151,7 +176,7 @@ begin
       PackageLock.Free;
     end;
   except
-    Result := '无法准备 ZeroTier 安装包：' + GetExceptionMessage;
+    Result := '无法下载或准备 ZeroTier 安装包。请检查网络后重试，或返回取消勾选 ZeroTier，仅安装 GameLink。详细原因：' + GetExceptionMessage;
   end;
 end;
 

@@ -1,24 +1,32 @@
-ZeroTier One 1.16.2 - independent, unmodified prerequisite
+ZeroTier One 1.16.2 - independent official download
 Copyright ZeroTier, Inc. and its contributors.
 
-GameLink includes the original official Windows MSI, without modification.
-The agent/service and desktop UI are distributed under MPL 2.0. The original
-MSI and its included third-party notices are preserved. GameLink is not
-endorsed by or affiliated with ZeroTier, Inc. No ZeroTier Controller or
-ZT_NONFREE=1 build is included.
+The default GameLink installer DOES NOT embed or redistribute the ZeroTier MSI.
+When explicitly selected by the user, it downloads the unmodified official MSI
+directly from ZeroTier, verifies the pinned SHA-256, and runs Windows Installer.
+The user's use of ZeroTier remains subject to ZeroTier's applicable terms.
+GameLink is not endorsed by or affiliated with ZeroTier, Inc.
 
-Agent source for this release, including original external dependency notices:
-https://github.com/zerotier/ZeroTierOne/tree/1.16.2
+IMPORTANT: The actual official 1.16.2 Windows x64 binary declares the
+ZeroTier Source-Available License for Non-Commercial Use (nonfree/LICENSE.md).
+Do not infer that this official Windows executable is MPL-only from the
+release notes about default make builds. Windows Release project settings
+include ZT_NONFREE_CONTROLLER=1 / ZT_NONFREE=1, and the MSI's extracted binary
+contains the Source-Available declaration. Commercial use and redistribution
+require the rights described by ZeroTier; none are granted by GameLink.
+Offline embedding is disabled by default and requires confirmed redistribution
+authorization. GameLink does not configure or use the bundled controller API.
+
+MPL 2.0 applies to the agent source portions; nonfree portions have separate
+terms. Original external dependency notices remain applicable.
+Source: https://github.com/zerotier/ZeroTierOne/tree/1.16.2
 Source archive: https://github.com/zerotier/ZeroTierOne/archive/refs/tags/1.16.2.zip
 Desktop UI source: https://github.com/zerotier/DesktopUI
-MPL 2.0 text: LICENSE-MPL-2.0.txt in this directory.
-Official MSI: https://download.zerotier.com/RELEASES/1.16.2/dist/ZeroTier%20One.msi
+Original MPL: LICENSE-MPL-2.0.txt
+Actual Windows binary declaration: LICENSE-SOURCE-AVAILABLE.md
+Official download: https://download.zerotier.com/RELEASES/1.16.2/dist/ZeroTier%20One.msi
 SHA-256: 42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670
 
-Setup installs the independent ZeroTier service and virtual network driver
-when the ZeroTier task is selected. Existing same/newer versions are retained.
-Removing GameLink does not remove ZeroTier or its identity/network data.
-No planet/moon files are imported or replaced by GameLink.
-
-The following MPL 2.0 applies only to the independent ZeroTier components;
-it does not relicense GameLink or the separately distributed Qt libraries.
+Removing GameLink does not remove the independently installed ZeroTier or its
+identity/network data. GameLink does not import or replace planet/moon files.
+These notices do not relicense GameLink or the separately distributed Qt DLLs.

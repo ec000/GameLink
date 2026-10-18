@@ -35,10 +35,14 @@ UsePreviousTasks=no
 Name: "chinesesimp"; MessagesFile: "languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
-Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（服务与虚拟网卡；相同或更新版本自动跳过）"
+Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（从官方下载并校验；相同或更新版本跳过）"
 [Files]
+#ifdef BundleZeroTier
 ; Keep the prerequisite first for early extraction with solid compression.
 Source: "{#ZeroTierMsi}"; DestDir: "{app}\prerequisites"; DestName: "ZeroTier-One.msi"; Flags: ignoreversion
+#else
+Source: "{tmp}\ZeroTier-One.msi"; DestDir: "{app}\prerequisites"; Flags: external skipifsourcedoesntexist ignoreversion; Check: ZeroTierPackageReady
+#endif
 Source: "{#StageDir}\*"; DestDir: "{app}"; Excludes: "prerequisites\ZeroTier-One.msi"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{userprograms}\GameLink"; Filename: "{app}\GameLink.exe"

@@ -1,5 +1,6 @@
-param([Parameter(Mandatory=$true)][string]$QtPrefix, [string]$InnoCompiler = '')
+param([Parameter(Mandatory=$true)][string]$QtPrefix, [string]$InnoCompiler = '', [switch]$BundleZeroTier, [switch]$RedistributionAuthorized)
 $ErrorActionPreference = 'Stop'
+if ($BundleZeroTier -and -not $RedistributionAuthorized) { throw 'Offline bundling of the official Windows binary requires confirmed ZeroTier redistribution rights; default setup downloads directly from ZeroTier instead' }
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $stage = Join-Path $root 'build/stage'
@@ -38,7 +39,11 @@ foreach ($required in @('GameLink.exe', 'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets
   if (-not (Test-Path (Join-Path $stage $required))) { throw "Missing staged dependency: $required" }
 }
 New-Item -ItemType Directory -Force -Path (Join-Path $stage 'prerequisites') | Out-Null
-Copy-Item -LiteralPath $zeroTier.Path -Destination (Join-Path $stage 'prerequisites/ZeroTier-One.msi') -Force
+if ($BundleZeroTier) {
+  Copy-Item -LiteralPath $zeroTier.Path -Destination (Join-Path $stage 'prerequisites/ZeroTier-One.msi') -Force
+} elseif (Test-Path (Join-Path $stage 'prerequisites/ZeroTier-One.msi')) {
+  Remove-Item -LiteralPath (Join-Path $stage 'prerequisites/ZeroTier-One.msi') -Force
+}
 Copy-Item -LiteralPath (Join-Path $root 'deploy/zerotier-package.json') -Destination (Join-Path $stage 'prerequisites/zerotier-package.json') -Force
 New-Item -ItemType Directory -Force -Path (Join-Path $stage 'licenses') | Out-Null
 Copy-Item -Path (Join-Path $root 'third_party/*') -Destination (Join-Path $stage 'licenses') -Recurse -Force
@@ -62,7 +67,8 @@ try {
 }
 Compress-Archive -Path build/stage/* -DestinationPath $archive -Force
 if ($InnoCompiler) {
-  & $InnoCompiler "/DStageDir=$root\build\stage" "/DMyAppVersion=$version" "/DZeroTierMsi=$($zeroTier.Path)" "/DZeroTierVersion=$($zeroTier.Version)" "/DZeroTierSHA256=$($zeroTier.Sha256)" deploy/GameLink.iss
+  $bundleDefine = if ($BundleZeroTier) { "/DBundleZeroTier" } else { "/DDownloadZeroTier" }
+  & $InnoCompiler $bundleDefine "/DStageDir=$root\build\stage" "/DMyAppVersion=$version" "/DZeroTierMsi=$($zeroTier.Path)" "/DZeroTierVersion=$($zeroTier.Version)" "/DZeroTierSHA256=$($zeroTier.Sha256)" "/DZeroTierURL=$((Get-Content deploy/zerotier-package.json -Raw | ConvertFrom-Json).url)" deploy/GameLink.iss
   if ($LASTEXITCODE -ne 0) { throw 'Installer generation failed' }
 }
 Write-Output 'Qt 6 package staged and startup checked. Real ZeroTier, Windows desktop interaction and game acceptance tests remain required.'

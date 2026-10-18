@@ -1,6 +1,8 @@
-# 本次测试报告
+# 测试记录（按版本追加）
 
-日期：2026-10-15（Asia/Shanghai）。首次交付主机 macOS arm64；Apple Clang 21.0.0、CMake 4.4.3、Go 1.26.3。最初无本地 ZeroTier、Qt 6、Windows SDK 或远端访问资料；后续已补齐 Qt 6 本机和 Windows CI 验证，见文末。
+下方首次交付与 0.2/0.3/0.4 的限制为历史记录；0.5 一键安装器结果见文末。
+
+首次交付日期：2026-10-15（Asia/Shanghai）。首次交付主机 macOS arm64；Apple Clang 21.0.0、CMake 4.4.3、Go 1.26.3。最初无本地 ZeroTier、Qt 6、Windows SDK 或远端访问资料；后续已补齐 Qt 6 本机和 Windows CI 验证，见文末。
 
 ## 已验证
 
@@ -112,3 +114,17 @@ CI 只读检查官方 ZeroTier One 1.16.2 MSI，固定 URL 为 https://download.
 本机最终 CTest 3/3 通过，Qt 客户端 18 passed / 1 skipped（仅 Windows 的官方 MSI 只读检查）。Windows 原生服务管理卡片截图已检查；build/artifacts/windows-0.4.0-ui/zerotier-installer-fixture.png 明确标记 MOCK。0.4.0 ZIP 已下载到 build/artifacts/windows-0.4.0/，当前源码归档为 build/GameLink-0.4.0-source.zip。
 
 实际 UAC 同意/取消、服务/虚拟网卡驱动安装升级卸载、原配置保留、不同系统策略/证书缓存与重启场景仍需实机验证；本轮没有在用户电脑或 CI 上安装/卸载真实 ZeroTier，也没有修改 planet/moon。
+
+## 0.5 一键安装官方 ZeroTier（2026-10-18）
+
+本机 macOS arm64 / Qt 6.11.2 完整构建、CTest 3/3、Python 调查测试 2/2 通过。只有 Windows 的官方 MSI 检查在本机跳过，由 Windows CI 覆盖。
+
+打包版本固定为原版官方 ZeroTier One 1.16.2，SHA-256 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。构建额外验证 Authenticode 与 MSI 元数据；默认 EXE 与 ZIP 不附带 MSI；EXE 按需直接从官方源下载后验证固定哈希，再安装并缓存用于修复。附带相关许可与源码获取说明。
+
+首轮 Windows CI 成功编译中文 Inno Setup 6.7.1 EXE、执行 Qt 回归、隔离 SDK 的启动/TLS 检查，并实际执行“取消 ZeroTier 任务 → 安装 GameLink → 卸载 GameLink”。测试随后因 PowerShell Select-String 参数位置错误中止；已修复日志断言。同时根据官方 MSI 工程兼容其额外的自定义 ARP 登记，仅使用真正 Windows Installer 登记判断版本。
+
+第二轮已真实安装 ZeroTier 1.16.2，确认服务 Running、身份生成、本地 API 的版本/节点格式，以及安装后 GameLink 自检通过。测试在 PowerShell Stop-Service 控制步骤被拒，已改为明确提权的系统 sc.exe；官方 MSI 的显式卸载清理已通过。
+
+进一步核验发现官方 Windows Release 工程启用 nonfree/controller，实际 MSI 提取的二进制也声明 Source-Available。原先据默认构建发行说明推断 MPL-only 不正确，已纠正全部当前文档/通知，并为实际二进制增加 -q -h 核验。未取得用户再分发授权，默认交付调整为一键官方下载并安装；不上传包含 MSI 的离线产物。使用原版客户端仍受官方许可约束，不能把在线安装方式视作商业使用授权。
+
+最终 Windows 生命周期验证与产物记录在复验完成后补充。

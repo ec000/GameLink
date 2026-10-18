@@ -1,8 +1,8 @@
-# ZeroTier 离线安装、修复与卸载（0.5）
+# ZeroTier 一键安装、修复与卸载（0.5）
 
 ## 一次安装 GameLink 与 ZeroTier
 
-运行 `GameLink-0.5.0-Setup.exe`，保留默认勾选的“安装/升级官方 ZeroTier One 1.16.2”，点击安装。MSI 已内置，目标电脑无需下载；系统可能需要联网更新证书信任，且 ZeroTier 联机仍需要网络。
+运行 `GameLink-0.5.0-Setup.exe`，保留默认勾选的“安装/升级官方 ZeroTier One 1.16.2”，点击安装。安装器从官方 HTTPS 地址下载固定版本原版 MSI，目标电脑需要联网；无需用户手动下载。
 
 - GameLink 以普通用户身份安装到 `%LocalAppData%/Programs/GameLink`；ZeroTier 服务与虚拟网卡安装由 Windows 单独请求管理员授权。
 - 相同/更高的标准 MSI 版本且服务已注册：跳过；已停止的已有服务不被强行启动。
@@ -11,15 +11,17 @@
 - UAC/安装取消、安装冲突或其他错误：明确显示原因并阻止继续安装 GameLink。3010/1641 提示手动重启，不主动重启电脑。
 - 取消勾选 ZeroTier 可仅安装 GameLink。卸载 GameLink 只移除自身文件和随包 MSI，保留独立 ZeroTier 与其身份/网络数据。
 
-构建脚本从 `deploy/zerotier-package.json` 读取固定版本/官方来源/校验值，检查 SHA-256、Authenticode 及 MSI 产品属性后才打包。运行安装器时锁定并重新校验 MSI；随包通知和源码链接位于 `licenses/zerotier`，Qt 通知位于 `licenses/qt`。安装器默认简体中文，也可选择英文。GameLink EXE 尚未签名，官方 MSI 保留签名。
+构建脚本从 `deploy/zerotier-package.json` 读取固定版本/官方来源/校验值，检查 SHA-256、Authenticode 及 MSI 产品属性后才构建。默认 EXE/ZIP 不附带 MSI，安装时直接从官方源下载，固定哈希验证成功后才执行；本次下载的 MSI 缓存到应用目录供修复。随包通知和源码链接位于 `licenses/zerotier`，Qt 通知位于 `licenses/qt`。安装器默认简体中文，也可选择英文。GameLink EXE 尚未签名，官方 MSI 保留签名。
 
 安装完成后仍需配置 GameLink 服务器及受保护的本地 API Token；安装器不会获取或复制 API 凭证，也不会替换 planet/moon。
+
+官方 1.16.2 Windows 实际二进制声明 Source-Available 许可，并非纯 MPL。默认不随 GameLink 再分发该 MSI；用户使用仍需遵守其条款。取得相应再分发授权后，构建者才可显式使用 `-BundleZeroTier -RedistributionAuthorized` 生成离线嵌入版；该开关是构建者的授权声明，不会赋予许可权利。当前交付为一键在线安装版。
 
 ## 设置页手动管理
 
 在“设置 → ZeroTier 服务管理”操作。适用于计算机级官方 ZeroTier One MSI 安装，主界面继续以普通用户身份运行。
 
-1. 设置页自动验证并选中随包的官方 MSI；也可从官方渠道获取新版完整 `.msi`。
+1. 设置页自动验证并选中本次下载缓存的官方 MSI；也可从官方渠道获取新版完整 `.msi`。
 2. 点击“选择 MSI”。验证成功后显示产品、版本和签名发布者。
 3. 点击“安装 / 修复服务”，检查确认框中的文件、版本和影响范围；Windows 将单独弹出管理员授权，并运行官方 MSI 向导。
 4. 卸载时先刷新安装列表，选择已安装版本，再点击“卸载 ZeroTier”。不需要保留原安装包。
@@ -27,7 +29,7 @@
 
 **此处管理整个官方 ZeroTier 产品（服务与虚拟网卡驱动），不是仅删除 SCM 服务注册。** 安装/升级可能中断已有连接，卸载影响本机所有 ZeroTier 网络及使用它的软件。操作前提供具体产品/版本确认，默认不执行。便携版、单独注册服务、非 MSI 或用户级安装不通过这里卸载，请使用它们自身的官方管理方式。
 
-安装包/产品列表不保存到普通设置。GameLink 0.5 包含固定版本的原版官方 MSI；GUI 不自动联网下载或自动更新。GUI 不复制本地 Token，也不会在安装完成后自动取得 API 凭证；仍需按现有方式配置受保护的 Token 文件。
+安装包/产品列表不保存到普通设置。GameLink 0.5 默认由安装器从官方下载固定版本原版 MSI；GUI 本身不自动联网下载或自动更新。GUI 不复制本地 Token，也不会在安装完成后自动取得 API 凭证；仍需按现有方式配置受保护的 Token 文件。
 
 ## 执行边界
 
