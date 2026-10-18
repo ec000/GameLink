@@ -7,7 +7,7 @@ $worlds = Get-Content (Join-Path $PayloadDirectory 'manifest.json') -Raw | Conve
 $moonName = "$($worlds.moon.id).moon"
 $script = Join-Path $PayloadDirectory 'apply-zerotier-roots.ps1'
 function Invoke-Helper([string]$Path, [int]$Expected) {
-    $p = Start-Process $shell -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', "`"$Path`"") -Wait -PassThru
+    $p = Start-Process $shell -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', "`"$Path`"") -Wait -PassThru -NoNewWindow
     if ($p.ExitCode -ne $Expected) { throw "Unexpected roots helper result: $($p.ExitCode), expected $Expected" }
 }
 $originalIdentity = (Get-FileHash (Join-Path $DataDirectory 'identity.secret') -Algorithm SHA256).Hash

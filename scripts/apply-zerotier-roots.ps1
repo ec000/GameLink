@@ -1,5 +1,6 @@
 # Template materialized with pinned hashes by package-personal-offline.ps1.
 # Windows PowerShell 5.1, elevated by the installer's explicit customroots task.
+param([switch]$ValidatePayloadOnly)
 $ErrorActionPreference = 'Stop'
 $planetHash = '@@PLANET_SHA256@@'
 $moonHash = '@@MOON_SHA256@@'
@@ -43,6 +44,7 @@ try {
     foreach ($name in @('planet', $moonName)) { Assert-PlainPath (Join-Path $PSScriptRoot $name) }
     Check-Hash (Join-Path $PSScriptRoot 'planet') $planetHash
     Check-Hash (Join-Path $PSScriptRoot $moonName) $moonHash
+    if ($ValidatePayloadOnly) { exit 0 }
     $phase = 2
     Assert-PlainPath $dataDir
     if (-not (Test-Path -LiteralPath $dataDir -PathType Container)) { exit 22 }
@@ -99,6 +101,7 @@ try {
     if ($wasRunning) { Start-ZeroTier }
     exit 0
 } catch {
+    Write-Host "ZT_ROOTS_FAILURE stage=$phase type=$($_.Exception.GetType().Name): $($_.Exception.Message)"
     # No identity, token, networks.d, other moons or controller files are copied.
     try {
         if ($serviceTouched) {

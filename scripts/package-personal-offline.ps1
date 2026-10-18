@@ -61,6 +61,9 @@ if ($CustomRootsDirectory) {
     $script = (Get-Content (Join-Path $PSScriptRoot 'apply-zerotier-roots.ps1') -Raw).Replace('@@PLANET_SHA256@@', $worlds.planet.sha256).Replace('@@MOON_SHA256@@', $worlds.moon.sha256).Replace('@@MOON_NAME@@', $moonName)
     $scriptPath = Join-Path $rootsDir 'apply-zerotier-roots.ps1'
     Set-Content -LiteralPath $scriptPath -Value $script -Encoding UTF8
+    # Exercise the actual Windows PowerShell 5.1 runtime before embedding it.
+    & "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptPath -ValidatePayloadOnly
+    if ($LASTEXITCODE -ne 0) { throw 'Native Windows PowerShell payload preflight failed' }
     $scriptHash = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $inspection | Set-Content (Join-Path $rootsDir 'manifest.json') -Encoding UTF8
     $extraDefines = @('/DCustomZeroTierRoots', "/DCustomRootsDir=$rootsDir", "/DCustomMoonName=$moonName", "/DCustomPlanetSHA256=$($worlds.planet.sha256)", "/DCustomMoonSHA256=$($worlds.moon.sha256)", "/DCustomRootsScriptSHA256=$scriptHash")
