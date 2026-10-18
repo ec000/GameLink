@@ -14,6 +14,9 @@
 #ifndef ZeroTierSHA256
   #error ZeroTierSHA256 is required
 #endif
+#ifndef InstallerLicenseFile
+  #define InstallerLicenseFile "..\third_party\zerotier\INSTALLER-LICENSE.txt"
+#endif
 [Setup]
 AppId={{CE1ED329-EFCA-4A78-92C6-ACF348558893}
 AppName=GameLink
@@ -23,9 +26,14 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 MinVersion=10.0.17763
 WizardStyle=modern
-LicenseFile=..\third_party\zerotier\INSTALLER-LICENSE.txt
+LicenseFile={#InstallerLicenseFile}
 OutputDir=..\build\installer
+#ifdef PersonalUseOnly
+OutputBaseFilename=GameLink-{#MyAppVersion}-Offline-Personal-Setup
+AppComments=Personal non-commercial use only; not a redistribution license
+#else
 OutputBaseFilename=GameLink-{#MyAppVersion}-Setup
+#endif
 Compression=lzma2
 SolidCompression=yes
 UninstallDisplayIcon={app}\GameLink.exe
@@ -35,7 +43,11 @@ UsePreviousTasks=no
 Name: "chinesesimp"; MessagesFile: "languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
+#ifdef BundleZeroTier
+Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（内置原版 MSI，无需下载；相同或更新版本跳过）"
+#else
 Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（从官方下载并校验；相同或更新版本跳过）"
+#endif
 [Files]
 #ifdef BundleZeroTier
 ; Keep the prerequisite first for early extraction with solid compression.

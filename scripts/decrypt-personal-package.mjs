@@ -1,0 +1,14 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createDecipheriv,createHash} from 'node:crypto';
+const [input,keyFile,output]=process.argv.slice(2);
+if (!input || !keyFile || !output) throw new Error('Usage: node decrypt-personal-package.mjs encrypted-file private-key-file output-exe');
+const data=readFileSync(input), header=Buffer.from('GLPKG001');
+const key=Buffer.from(readFileSync(keyFile,'utf8').trim(),'base64');
+if(key.length!==32 || data.length<36 || !data.subarray(0,8).equals(header)) throw new Error('Invalid encrypted package or key');
+const decipher=createDecipheriv('aes-256-gcm',key,data.subarray(8,20));
+decipher.setAAD(header);decipher.setAuthTag(data.subarray(20,36));
+const plaintext=Buffer.concat([decipher.update(data.subarray(36)),decipher.final()]);
+key.fill(0);
+if(plaintext.subarray(0,2).toString('ascii')!=='MZ') throw new Error('Authenticated content is not a Windows EXE');
+writeFileSync(output,plaintext,{mode:0o600,flag:'wx'});
+console.log(JSON.stringify({file:output,bytes:plaintext.length,sha256:createHash('sha256').update(plaintext).digest('hex')}));

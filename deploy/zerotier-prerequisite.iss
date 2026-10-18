@@ -6,7 +6,9 @@ var
 
 procedure InitializeWizard;
 begin
+#ifndef BundleZeroTier
   ZeroTierDownloadPage := CreateDownloadPage('下载官方 ZeroTier 客户端', '从官方下载固定版本 MSI 并校验 SHA-256，请保持网络连接。', nil);
+#endif
 end;
 
 function ZeroTierPackageReady: Boolean;
@@ -133,6 +135,7 @@ begin
   try
 #ifdef BundleZeroTier
     ExtractTemporaryFile('ZeroTier-One.msi');
+    Log('ZT_PREREQ_BUNDLED');
 #else
     ZeroTierDownloadPage.Clear;
     ZeroTierDownloadPage.Add('{#ZeroTierURL}', 'ZeroTier-One.msi', '{#ZeroTierSHA256}');
@@ -176,7 +179,11 @@ begin
       PackageLock.Free;
     end;
   except
+#ifdef BundleZeroTier
+    Result := '无法准备内置 ZeroTier 安装包。请检查安装文件完整性后重试，或返回取消勾选 ZeroTier，仅安装 GameLink。详细原因：' + GetExceptionMessage;
+#else
     Result := '无法下载或准备 ZeroTier 安装包。请检查网络后重试，或返回取消勾选 ZeroTier，仅安装 GameLink。详细原因：' + GetExceptionMessage;
+#endif
   end;
 end;
 

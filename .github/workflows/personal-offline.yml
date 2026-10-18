@@ -1,0 +1,71 @@
+name: Private personal offline installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      personal_use_only:
+        description: 'Only my own personal non-commercial use; no public redistribution'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  personal-offline:
+    if: inputs.personal_use_only
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Require private transport key
+        shell: pwsh
+        env:
+          GAMELINK_PERSONAL_OFFLINE_KEY: ${{ secrets.GAMELINK_PERSONAL_OFFLINE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GAMELINK_PERSONAL_OFFLINE_KEY)) { throw 'Private transport key missing; refusing to build an unprotected artifact' }
+      - name: Download pinned verified GameLink base
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $base = Get-Content deploy/personal-offline-base.json -Raw | ConvertFrom-Json
+          gh run download $base.run_id --repo $env:GITHUB_REPOSITORY -n $base.artifact -D build/input
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot obtain verified base ZIP' }
+      - name: Build private personal offline setup
+        shell: pwsh
+        run: |
+          $base = Get-Content deploy/personal-offline-base.json -Raw | ConvertFrom-Json
+          ./scripts/package-personal-offline.ps1 -Archive "build/input/$($base.archive)" -InnoCompiler "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" -PersonalUseOnly
+      - name: Test actual embedded MSI lifecycle on disposable VM
+        shell: pwsh
+        run: ./scripts/test-windows-installer.ps1 -OfflinePersonal -StageDirectory build/personal-stage
+      - name: Encrypt installer before artifact upload
+        shell: pwsh
+        env:
+          GAMELINK_PERSONAL_OFFLINE_KEY: ${{ secrets.GAMELINK_PERSONAL_OFFLINE_KEY }}
+        run: |
+          $setup = Get-ChildItem build/installer/*-Offline-Personal-Setup.exe | Select-Object -First 1
+          if (-not $setup) { throw 'Missing private setup' }
+          $encrypted = "build/private-encrypted/$($setup.Name).aesgcm"
+          ./scripts/encrypt-personal-package.ps1 -InputFile $setup.FullName -OutputFile $encrypted
+          # Verify PowerShell -> Node interoperability before any upload.
+          $keyFile = Join-Path $env:RUNNER_TEMP "$([Guid]::NewGuid()).secret"
+          $checkFile = Join-Path $env:RUNNER_TEMP "$([Guid]::NewGuid()).exe"
+          try {
+            [IO.File]::WriteAllText($keyFile, $env:GAMELINK_PERSONAL_OFFLINE_KEY)
+            node ./scripts/decrypt-personal-package.mjs $encrypted $keyFile $checkFile
+            if ($LASTEXITCODE -ne 0) { throw 'Cross-runtime authenticated decryption failed' }
+            if ((Get-FileHash $setup.FullName -Algorithm SHA256).Hash -ne (Get-FileHash $checkFile -Algorithm SHA256).Hash) { throw 'Transport round-trip changed the installer' }
+          } finally {
+            Remove-Item -LiteralPath $keyFile, $checkFile -Force -ErrorAction SilentlyContinue
+          }
+      # Intentionally never upload raw installers, ZIPs, staging files or MSI files.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: GameLink-Personal-Offline-Encrypted
+          path: build/private-encrypted/*.aesgcm
+          if-no-files-found: error
+          retention-days: 1

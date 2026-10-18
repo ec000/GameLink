@@ -1,0 +1,8 @@
+{
+  "version": "0.5.0",
+  "run_id": 39102452054,
+  "artifact": "GameLink-Windows-Qt6",
+  "archive": "GameLink-0.5.0-Windows.zip",
+  "sha256": "3aad8c0be9f2699dde5082df031a651ab2b07719423648c80f1bb9d5c7361c13",
+  "code_commit": "c0c9a15c4efdc5e34fbc3afe26116dd4957242d8"
+}

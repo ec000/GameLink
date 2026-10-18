@@ -1,3 +1,4 @@
+param([switch]$OfflinePersonal, [string]$StageDirectory = 'build/stage')
 # Destructive lifecycle test: only on a fresh, disposable GitHub Actions Windows VM.
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows') { throw 'This test only runs on disposable Windows GitHub Actions runners' }
@@ -46,11 +47,18 @@ try {
     if (Get-Service $serviceName -ErrorAction SilentlyContinue) { throw 'Opt-out unexpectedly installed ZeroTier' }
     if (-not (Select-String -LiteralPath "$logs/01-opt-out.log" -Pattern 'ZT_PREREQ_OPT_OUT' -SimpleMatch -Quiet)) { throw 'Missing opt-out evidence' }
     Remove-GameLink '02-remove-opt-out'
-    if (Test-Path (Join-Path $root 'build/stage/prerequisites/ZeroTier-One.msi')) { throw 'Default distribution must not embed the official nonfree MSI without redistribution rights' }
+    $stageMsi = Join-Path (Join-Path $root $StageDirectory) 'prerequisites/ZeroTier-One.msi'
+    if ($OfflinePersonal) {
+        if (-not (Test-Path $stageMsi) -or (Get-FileHash $stageMsi -Algorithm SHA256).Hash -ne (Get-FileHash $msi -Algorithm SHA256).Hash) { throw 'Missing or modified bundled original MSI' }
+    } elseif (Test-Path $stageMsi) { throw 'Default public distribution must not embed the official nonfree MSI without redistribution rights' }
     # No task override: proves default direct official download and MSI install.
     Run-Setup '03-default-install' @()
     $installedZeroTier = $true
-    if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_OFFICIAL_DOWNLOAD' -SimpleMatch -Quiet)) { throw 'Missing direct official download evidence' }
+    $downloaded = Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_OFFICIAL_DOWNLOAD' -SimpleMatch -Quiet
+    $bundled = Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_BUNDLED' -SimpleMatch -Quiet
+    if ($OfflinePersonal) {
+        if ($downloaded -or -not $bundled) { throw 'Personal offline setup did not exclusively use its embedded MSI' }
+    } elseif (-not $downloaded -or $bundled) { throw 'Missing exclusive direct official download evidence' }
     if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_SUCCESS' -SimpleMatch -Quiet)) { throw 'Missing real MSI installation evidence' }
     $service = Get-Service $serviceName
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
@@ -60,7 +68,7 @@ try {
     $licenseProcess = Start-Process -FilePath (Join-Path $dataDir 'zerotier-one_x64.exe') -ArgumentList @('-q', '-h') -PassThru -Wait -NoNewWindow -RedirectStandardOutput "$logs/zerotier-binary-license.log" -RedirectStandardError "$logs/zerotier-binary-license-error.log"
     $licenseText = (Get-Content "$logs/zerotier-binary-license.log" -Raw) + (Get-Content "$logs/zerotier-binary-license-error.log" -Raw)
     if ($licenseText -notmatch 'Source-Available License|Mozilla Public License') { throw 'Unknown official Windows binary license declaration' }
-    if ($licenseText -match 'Source-Available License') { Write-Host 'Verified: original official Windows binary declares Source-Available terms; default GameLink setup downloads it directly from ZeroTier, without redistributing it.' }
+    if ($licenseText -match 'Source-Available License') { Write-Host 'Verified official Windows Source-Available declaration; its terms remain applicable to this installation.' }
     $identityPath = Join-Path $dataDir 'identity.secret'
     for ($attempt = 0; $attempt -lt 30 -and -not (Test-Path $identityPath); $attempt++) { Start-Sleep -Seconds 1 }
     $identityHash = (Get-FileHash $identityPath -Algorithm SHA256).Hash
