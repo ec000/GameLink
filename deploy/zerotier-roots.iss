@@ -1,4 +1,4 @@
-; Included inside [Code]. Payload and helper hashes are fixed at build time.
+{ Included inside [Code]. Payload and helper hashes are fixed at build time. }
 #ifdef CustomZeroTierRoots
 function PrepareCustomZeroTierRoots: String;
 var

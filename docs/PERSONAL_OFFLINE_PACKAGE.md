@@ -10,7 +10,7 @@
 
 客户端复用已验证的 0.5.0 Windows Qt 6.8.3 ZIP，原始构建提交为 c0c9a15c4efdc5e34fbc3afe26116dd4957242d8；完整来源/校验值固定在 deploy/personal-offline-base.json。本次只重新构建安装器，不把别的客户端代码混入已验证基线。后续修改客户端时需明确更新该基线，而非悄悄使用旧 ZIP。
 
-个人包文件名为 `GameLink-0.5.0-Offline-Personal-Setup.exe`，Windows 程序与安装器尚未签名。
+个人包文件名为 `GameLink-0.5.0-Offline-Personal-Setup.exe`；带自建根节点的定制版为 `GameLink-0.5.0-CustomRoots-Offline-Personal-Setup.exe`，额外包含用户提供的 planet/moon，并通过独立安装任务校验、备份后部署，详见 [自建根节点说明](CUSTOM_ROOTS.md)。Windows 程序与安装器尚未签名。
 
 ## 私有产物传输
 

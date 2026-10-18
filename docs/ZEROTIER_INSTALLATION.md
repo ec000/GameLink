@@ -13,7 +13,7 @@
 
 构建脚本从 `deploy/zerotier-package.json` 读取固定版本/官方来源/校验值，检查 SHA-256、Authenticode 及 MSI 产品属性后才构建。默认 EXE/ZIP 不附带 MSI，安装时直接从官方源下载，固定哈希验证成功后才执行；本次下载的 MSI 缓存到应用目录供修复。随包通知和源码链接位于 `licenses/zerotier`，Qt 通知位于 `licenses/qt`。安装器默认简体中文，也可选择英文。GameLink EXE 尚未签名，官方 MSI 保留签名。
 
-安装完成后仍需配置 GameLink 服务器及受保护的本地 API Token；安装器不会获取或复制 API 凭证，也不会替换 planet/moon。
+安装完成后仍需配置 GameLink 服务器及受保护的本地 API Token；安装器不会获取或复制 API 凭证。默认包不替换 planet/moon；个人定制包可额外勾选自建根节点任务。
 
 官方 1.16.2 Windows 实际二进制声明 Source-Available 许可，并非纯 MPL。默认不随 GameLink 再分发该 MSI；用户使用仍需遵守其条款。取得相应再分发授权后，构建者才可显式使用 `-BundleZeroTier -RedistributionAuthorized` 生成离线嵌入版；该开关是构建者的授权声明，不会赋予许可权利。公开交付为一键在线安装版。针对已确认的个人非商业自用，可通过独立的 package-personal-offline.ps1 与手动私用工作流生成内置原版 MSI 的个人离线包，不声明商业/公开再分发授权；详见 [个人离线包](PERSONAL_OFFLINE_PACKAGE.md)。
 
@@ -59,9 +59,9 @@
 
 ## planet / moon
 
-当前尚未收到用户服务器提供的文件/下载地址，本版本不导入、不替换、不生成 planet 或 moon，不变更根节点、默认网关和 DNS。
+已支持个人定制安装器内嵌用户提供的 planet/moon，在显式安装任务中校验、备份后部署并按需重启服务，失败尝试恢复原配置。默认公开包和 GUI 不导入或替换根节点。详见 [自建根节点配置](CUSTOM_ROOTS.md)。
 
-GameLink 不主动删除 identity、网络或根配置。**官方卸载器可能调整其自身数据，不能承诺保留这些文件。** 如需保留，请在卸载前按官方方式备份。后续提供文件后，再实现来源/格式校验、明确展示变更、备份/回滚与所需权限；不把未实现的导入能力计作当前功能。
+GameLink 不主动删除 identity、网络或根配置。**官方卸载器可能调整其自身数据，不能承诺保留这些文件。** 如需保留，请在卸载前按官方方式备份。配置根节点不等于加入网络；仍需 Network ID 和控制器授权。
 
 ## 0.5 验证状态
 
