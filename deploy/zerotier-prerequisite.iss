@@ -100,7 +100,9 @@ begin
   end;
 end;
 
-function PrepareToInstall(var NeedsRestart: Boolean): String;
+#include "zerotier-roots.iss"
+
+function PrepareZeroTierPrerequisite: String;
 var
   Found, Registered, Valid: Boolean;
   InstalledVersion, MsiPath, Parameters, UiFlags: String;
@@ -185,6 +187,14 @@ begin
     Result := '无法下载或准备 ZeroTier 安装包。请检查网络后重试，或返回取消勾选 ZeroTier，仅安装 GameLink。详细原因：' + GetExceptionMessage;
 #endif
   end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := PrepareZeroTierPrerequisite;
+#ifdef CustomZeroTierRoots
+  if Result = '' then Result := PrepareCustomZeroTierRoots;
+#endif
 end;
 
 procedure CurPageChanged(CurPageID: Integer);

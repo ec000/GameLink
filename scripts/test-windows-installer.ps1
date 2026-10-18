@@ -1,4 +1,4 @@
-param([switch]$OfflinePersonal, [string]$StageDirectory = 'build/stage')
+param([switch]$OfflinePersonal, [string]$StageDirectory = 'build/stage', [switch]$CustomRoots)
 # Destructive lifecycle test: only on a fresh, disposable GitHub Actions Windows VM.
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows') { throw 'This test only runs on disposable Windows GitHub Actions runners' }
@@ -43,7 +43,7 @@ function Remove-GameLink([string]$LogName) {
 }
 $installedZeroTier = $false
 try {
-    Run-Setup '01-opt-out' @('/MERGETASKS=!zerotier')
+    Run-Setup '01-opt-out' @('/TASKS=')
     if (Get-Service $serviceName -ErrorAction SilentlyContinue) { throw 'Opt-out unexpectedly installed ZeroTier' }
     if (-not (Select-String -LiteralPath "$logs/01-opt-out.log" -Pattern 'ZT_PREREQ_OPT_OUT' -SimpleMatch -Quiet)) { throw 'Missing opt-out evidence' }
     Remove-GameLink '02-remove-opt-out'
@@ -72,6 +72,19 @@ try {
     $identityPath = Join-Path $dataDir 'identity.secret'
     for ($attempt = 0; $attempt -lt 30 -and -not (Test-Path $identityPath); $attempt++) { Start-Sleep -Seconds 1 }
     $identityHash = (Get-FileHash $identityPath -Algorithm SHA256).Hash
+    if ($CustomRoots) {
+        $rootsDir = Join-Path (Join-Path $root $StageDirectory) 'prerequisites/custom-roots'
+        $worlds = Get-Content (Join-Path $rootsDir 'manifest.json') -Raw | ConvertFrom-Json
+        $moonName = "$($worlds.moon.id).moon"
+        foreach ($pair in @(@('planet', $worlds.planet.sha256), @("moons.d/$moonName", $worlds.moon.sha256))) {
+            if ((Get-FileHash (Join-Path $dataDir $pair[0]) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pair[1]) { throw 'Custom roots not actually installed' }
+        }
+        if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_ROOTS_SUCCESS' -SimpleMatch -Quiet)) { throw 'Missing real roots installation evidence' }
+        $backups = @(Get-ChildItem (Join-Path $dataDir 'gamelink-root-backups') -Directory)
+        if ($backups.Count -ne 1 -or -not (Test-Path (Join-Path $backups[0].FullName 'manifest.json'))) { throw 'Missing transaction backup' }
+        & (Join-Path $PSScriptRoot 'test-zerotier-roots.ps1') -PayloadDirectory $rootsDir -DataDirectory $dataDir -OriginalBackup $backups[0].FullName
+        if ((Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'Roots tests changed identity' }
+    }
     # Verify the local service API without logging its credential or identity contents.
     $token = [IO.File]::ReadAllText((Join-Path $dataDir 'authtoken.secret')).Trim()
     $status = $null
@@ -88,7 +101,8 @@ try {
     # SCM can report ERROR_BROKEN_PIPE while the service exits. It is not
     # accepted as a successful stop unless the following real status check passes.
     (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
-    Run-Setup '04-repeat-install' @('/TASKS=zerotier')
+    $tasks = if ($CustomRoots) { '/TASKS=zerotier,customroots' } else { '/TASKS=zerotier' }
+    Run-Setup '04-repeat-install' @($tasks)
     if (-not (Select-String -LiteralPath "$logs/04-repeat-install.log" -Pattern 'ZT_PREREQ_SKIP' -SimpleMatch -Quiet)) { throw 'Repeat install did not skip existing same version' }
     if ((Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'Repeat install changed ZeroTier identity' }
     if ((Get-Service $serviceName).Status -ne 'Stopped') { throw 'Repeat install unexpectedly started an existing stopped service' }

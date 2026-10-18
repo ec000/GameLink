@@ -28,7 +28,10 @@ MinVersion=10.0.17763
 WizardStyle=modern
 LicenseFile={#InstallerLicenseFile}
 OutputDir=..\build\installer
-#ifdef PersonalUseOnly
+#if defined(PersonalUseOnly) && defined(CustomZeroTierRoots)
+OutputBaseFilename=GameLink-{#MyAppVersion}-CustomRoots-Offline-Personal-Setup
+AppComments=Personal non-commercial use only; custom root configuration
+#elif defined(PersonalUseOnly)
 OutputBaseFilename=GameLink-{#MyAppVersion}-Offline-Personal-Setup
 AppComments=Personal non-commercial use only; not a redistribution license
 #else
@@ -43,12 +46,20 @@ UsePreviousTasks=no
 Name: "chinesesimp"; MessagesFile: "languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
+#ifdef CustomZeroTierRoots
+Name: "customroots"; Description: "配置内置自建 Planet 和 Moon（备份旧配置，按需重启 ZeroTier，可能中断已有连接）"
+#endif
 #ifdef BundleZeroTier
 Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（内置原版 MSI，无需下载；相同或更新版本跳过）"
 #else
 Name: "zerotier"; Description: "安装/升级官方 ZeroTier One {#ZeroTierVersion}（从官方下载并校验；相同或更新版本跳过）"
 #endif
 [Files]
+#ifdef CustomZeroTierRoots
+Source: "{#CustomRootsDir}\apply-zerotier-roots.ps1"; Flags: dontcopy
+Source: "{#CustomRootsDir}\planet"; Flags: dontcopy
+Source: "{#CustomRootsDir}\{#CustomMoonName}"; Flags: dontcopy
+#endif
 #ifdef BundleZeroTier
 ; Keep the prerequisite first for early extraction with solid compression.
 Source: "{#ZeroTierMsi}"; DestDir: "{app}\prerequisites"; DestName: "ZeroTier-One.msi"; Flags: ignoreversion

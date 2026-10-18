@@ -8,6 +8,11 @@ on:
         type: boolean
         required: true
         default: false
+      custom_roots:
+        description: 'Include my private root files from one-use Actions Secret'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -36,12 +41,31 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Cannot obtain verified base ZIP' }
       - name: Build private personal offline setup
         shell: pwsh
+        env:
+          CUSTOM_ROOTS: ${{ inputs.custom_roots }}
+          GAMELINK_CUSTOM_ROOTS: ${{ secrets.GAMELINK_CUSTOM_ROOTS }}
         run: |
           $base = Get-Content deploy/personal-offline-base.json -Raw | ConvertFrom-Json
-          ./scripts/package-personal-offline.ps1 -Archive "build/input/$($base.archive)" -InnoCompiler "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" -PersonalUseOnly
+          $extra = @{}
+          if ($env:CUSTOM_ROOTS -eq 'true') {
+            if (-not $env:GAMELINK_CUSTOM_ROOTS) { throw 'Private roots missing' }
+            $roots = $env:GAMELINK_CUSTOM_ROOTS | ConvertFrom-Json
+            $dir = New-Item -ItemType Directory build/root-input
+            [IO.File]::WriteAllBytes((Join-Path $dir.FullName 'planet'), [Convert]::FromBase64String($roots.planet))
+            $moonBytes = [Convert]::FromBase64String($roots.moon)
+            if ($moonBytes.Length -lt 9) { throw 'Invalid moon header' }
+            $moonId = [BitConverter]::ToString($moonBytes[1..8]).Replace('-', '').ToLowerInvariant()
+            [IO.File]::WriteAllBytes((Join-Path $dir.FullName "$moonId.moon"), $moonBytes)
+            $extra.CustomRootsDirectory = $dir.FullName
+            $env:GAMELINK_CUSTOM_ROOTS = $null
+          }
+          ./scripts/package-personal-offline.ps1 -Archive "build/input/$($base.archive)" -InnoCompiler "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe" -PersonalUseOnly @extra
       - name: Test actual embedded MSI lifecycle on disposable VM
         shell: pwsh
-        run: ./scripts/test-windows-installer.ps1 -OfflinePersonal -StageDirectory build/personal-stage
+        env:
+          CUSTOM_ROOTS: ${{ inputs.custom_roots }}
+        run: |
+          ./scripts/test-windows-installer.ps1 -OfflinePersonal -StageDirectory build/personal-stage -CustomRoots:($env:CUSTOM_ROOTS -eq 'true')
       - name: Encrypt installer before artifact upload
         shell: pwsh
         env:
