@@ -68,7 +68,10 @@ begin
       StringChangeEx(Publisher, ',', '', True);
       StringChangeEx(Publisher, '.', '', True);
       if Publisher = 'zerotierinc' then begin
-        if not RegQueryDWordValue(Root, Key, 'WindowsInstaller', WindowsInstaller) or (WindowsInstaller <> 1) then begin Result := False; Exit; end;
+        { Advanced Installer also creates a duplicate custom ARP entry; only
+          the Windows Installer product entry proves a machine MSI install. }
+        if not RegQueryDWordValue(Root, Key, 'WindowsInstaller', WindowsInstaller) then Continue;
+        if WindowsInstaller <> 1 then Continue;
         if not RegQueryStringValue(Root, Key, 'DisplayVersion', Version) then begin Result := False; Exit; end;
         Comparison := CompareVersion(Version, '{#ZeroTierVersion}', Valid);
         if not Valid then begin Result := False; Exit; end;
