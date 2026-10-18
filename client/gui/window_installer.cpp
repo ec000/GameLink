@@ -1,5 +1,7 @@
 #include "window.hpp"
 #include <QCloseEvent>
+#include <QCoreApplication>
+#include <QFileInfo>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QLabel>
@@ -23,6 +25,16 @@ void Window::refreshInstaller() {
  if(!installerInventory.error.isEmpty())installerStatus->setText(installerInventory.error);
  else if(installerInventory.products.isEmpty())installerStatus->setText(S("未发现计算机级 ZeroTier MSI 安装。可选择官方 MSI 安装；便携版/仅服务注册不通过此处卸载。"));
  else installerStatus->setText(S("已发现 %1 个 ZeroTier 安装。安装/修复或卸载会影响本机所有使用 ZeroTier 的连接。").arg(installerInventory.products.size()));
+ if(installerInventory.supported && installerPath->text().isEmpty()) {
+  const auto bundled=QCoreApplication::applicationDirPath()+S("/prerequisites/ZeroTier-One.msi");
+  if(QFileInfo::exists(bundled)) {
+   const auto package=installer.inspect(bundled);
+   if(package.valid) {
+    installerPath->setText(package.path);
+    installerStatus->setText(S("已验证随包提供的 ZeroTier %1；可直接安装/修复，Windows 将请求管理员授权。").arg(package.version));
+   } else installerStatus->setText(package.error);
+  }
+ }
  updateInstallerButtons();
 }
 void Window::selectInstaller() {

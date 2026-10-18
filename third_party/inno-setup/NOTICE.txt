@@ -1,0 +1,3 @@
+ChineseSimplified.isl is the unmodified contributed Inno Setup translation.
+Source: https://github.com/jrsoftware/issrc/blob/is-6_4_3/Files/Languages/Unofficial/ChineseSimplified.isl
+Inno Setup license: LICENSE.txt in this directory.

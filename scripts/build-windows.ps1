@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $stage = Join-Path $root 'build/stage'
+$zeroTier = & (Join-Path $PSScriptRoot 'get-zerotier-package.ps1') -Destination (Join-Path $root 'build/cache/ZeroTier-One.msi')
+$env:GAMELINK_TEST_ZT_MSI = $zeroTier.Path
 cmake -S . -B build/windows -G 'Visual Studio 17 2022' -A x64 "-DCMAKE_PREFIX_PATH=$QtPrefix"
 if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
 $versionMatch = Select-String -Path 'build/windows/CMakeCache.txt' -Pattern '^CMAKE_PROJECT_VERSION:STATIC=(.+)$' | Select-Object -First 1
@@ -35,6 +37,11 @@ foreach ($required in @('GameLink.exe', 'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets
   'qt.conf', 'plugins/platforms/qwindows.dll', 'msvcp140.dll', 'vcruntime140.dll')) {
   if (-not (Test-Path (Join-Path $stage $required))) { throw "Missing staged dependency: $required" }
 }
+New-Item -ItemType Directory -Force -Path (Join-Path $stage 'prerequisites') | Out-Null
+Copy-Item -LiteralPath $zeroTier.Path -Destination (Join-Path $stage 'prerequisites/ZeroTier-One.msi') -Force
+Copy-Item -LiteralPath (Join-Path $root 'deploy/zerotier-package.json') -Destination (Join-Path $stage 'prerequisites/zerotier-package.json') -Force
+New-Item -ItemType Directory -Force -Path (Join-Path $stage 'licenses') | Out-Null
+Copy-Item -Path (Join-Path $root 'third_party/*') -Destination (Join-Path $stage 'licenses') -Recurse -Force
 # Run the deployed application without the SDK's bin directory in PATH.
 $previousPath = $env:PATH
 $previousPlatform = $env:QT_QPA_PLATFORM
@@ -55,7 +62,7 @@ try {
 }
 Compress-Archive -Path build/stage/* -DestinationPath $archive -Force
 if ($InnoCompiler) {
-  & $InnoCompiler "/DStageDir=$root\build\stage" "/DMyAppVersion=$version" deploy/GameLink.iss
+  & $InnoCompiler "/DStageDir=$root\build\stage" "/DMyAppVersion=$version" "/DZeroTierMsi=$($zeroTier.Path)" "/DZeroTierVersion=$($zeroTier.Version)" "/DZeroTierSHA256=$($zeroTier.Sha256)" deploy/GameLink.iss
   if ($LASTEXITCODE -ne 0) { throw 'Installer generation failed' }
 }
 Write-Output 'Qt 6 package staged and startup checked. Real ZeroTier, Windows desktop interaction and game acceptance tests remain required.'

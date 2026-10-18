@@ -5,6 +5,8 @@
 #include <QStackedWidget>
 #include <QTimer>
 #include <QLabel>
+#include <QLineEdit>
+#include <QFileInfo>
 #include <QPushButton>
 #include <QSslSocket>
 
@@ -31,7 +33,15 @@ int main(int argc, char** argv) {
                 window.findChild<QLabel*>(QStringLiteral("serviceStatus")) && window.findChild<QLabel*>(QStringLiteral("localApiStatus"));
             const bool installerReady = window.findChild<QPushButton*>(QStringLiteral("ztInstallButton")) &&
                 window.findChild<QPushButton*>(QStringLiteral("ztUninstallButton")) && window.findChild<QLabel*>(QStringLiteral("ztInstallerStatus"));
-            app.exit(installerReady && detectionReady && profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
+            bool bundledReady = true;
+#ifdef Q_OS_WIN
+            const auto bundled = QCoreApplication::applicationDirPath()+QStringLiteral("/prerequisites/ZeroTier-One.msi");
+            if (QFileInfo::exists(bundled)) {
+                const auto* path = window.findChild<QLineEdit*>(QStringLiteral("ztMsiPath"));
+                bundledReady = path && QFileInfo(path->text()).canonicalFilePath() == QFileInfo(bundled).canonicalFilePath();
+            }
+#endif
+            app.exit(bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();
