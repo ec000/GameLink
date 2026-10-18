@@ -102,7 +102,19 @@ try {
     if ($wasRunning) { Start-ZeroTier }
     exit 0
 } catch {
-    Write-Host "ZT_ROOTS_FAILURE stage=$phase type=$($_.Exception.GetType().Name): $($_.Exception.Message)"
+    $failure = "ZT_ROOTS_FAILURE stage=$phase type=$($_.Exception.GetType().Name): $($_.Exception.Message)"
+    Write-Host $failure
+    try {
+        Assert-PlainPath $dataDir
+        if (Test-Path -LiteralPath $dataDir -PathType Container) {
+            # Unique CreateNew file inside the service directory: never follow
+            # or overwrite a pre-created diagnostic file during elevation.
+            $errorFile = Join-Path $dataDir ('gamelink-roots-error-' + [Guid]::NewGuid().ToString('N') + '.log')
+            $stream = [IO.File]::Open($errorFile, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+            try { $bytes = [Text.Encoding]::UTF8.GetBytes($failure); $stream.Write($bytes, 0, $bytes.Length) }
+            finally { $stream.Dispose() }
+        }
+    } catch { } # Diagnostic failure must not interrupt rollback.
     # No identity, token, networks.d, other moons or controller files are copied.
     try {
         if ($serviceTouched) {

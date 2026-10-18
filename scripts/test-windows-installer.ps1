@@ -117,6 +117,7 @@ try {
         Select-String -LiteralPath $_.FullName -Pattern 'Error|错误|失败|ZT_ROOTS|ZT_PREREQ|需要|未就绪' | Select-Object -Last 15 | ForEach-Object { Write-Host $_.Line }
     }
     Get-CimInstance Win32_Service -Filter "Name='ZeroTierOneService'" | Select-Object Name, PathName, State | Format-List | Out-Host
+    Get-ChildItem "$env:ProgramData/ZeroTier/One/gamelink-roots-error-*.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName | Write-Host }
     throw
 } finally {
     # Inno's original unins000.exe may still await asynchronous self-deletion.
