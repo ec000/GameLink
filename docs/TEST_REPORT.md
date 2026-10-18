@@ -136,10 +136,24 @@ Windows Server 2022 / MSVC 2022 / Qt 6.8.3：CTest 3/3（Qt 客户端共 19 项�
 
 CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实查询 SCM 为 Stopped 时接受，不把退出码直接视为成功。Inno 原始卸载器的自删除可能晚于启动进程退出，测试等待卸载成功日志，且不重复执行残留卸载器。Qt action 使用同一固定提交的 JS 入口，避免部分 runner 后置阶段不支持其复合入口的 $/action 语法。
 
-官方样本：ZeroTier One 1.16.2，SHA-256 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。只读提取 MSI 与 Windows -q -h 帮助均确认其实际二进制声明 Source-Available；不能按默认源码构建说明推断为 MPL-only。默认交付不内置/再分发此 MSI，许可和源码通知已纠正。离线嵌入模式需相应再分发授权，当前没有交付离线版。
+官方样本：ZeroTier One 1.16.2，SHA-256 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。只读提取 MSI 与 Windows -q -h 帮助均确认其实际二进制声明 Source-Available；不能按默认源码构建说明推断为 MPL-only。默认交付不内置/再分发此 MSI，许可和源码通知已纠正。公开再分发的离线嵌入模式需相应权限；该公开交付没有离线版。随后按用户确认的个人用途生成的私用离线包见下节。
 
 产物：`GameLink-0.5.0-Setup.exe`（一键在线安装）与 `GameLink-0.5.0-Windows.zip`，分别提供于 GameLink-Windows-Installer / GameLink-Windows-Qt6 artifact；日志位于 GameLink-Windows-Installer-Logs。源码归档及 SHA-256 校验清单位于本地 build 目录。
 
 边界：CI 为管理员/自动化环境，未手动验收 Windows 10/11 标准用户 UAC 同意/取消、跨账号提权、旧版升级/更高版本保留、重启与驱动策略矩阵。服务/API 就绪不等于虚拟网卡加载、真实 join、P2P、NAT 或游戏验收；这些仍按既有测试计划执行。没有在用户本机安装服务，没有导入或修改 planet/moon。GameLink 程序与安装器尚未代码签名。
 
 0.5.0 安装器 SHA-256：`1f12d10b10083e16f3f38c234de0be184e9723aa38cfce2f00e485a658f1d0d7`（41,480,637 字节）。ZIP SHA-256：`3aad8c0be9f2699dde5082df031a651ab2b07719423648c80f1bb9d5c7361c13`（49,610,513 字节）。本地已校验 ZIP 全量 CRC、Qt/CRT/许可依赖及无 MSI 条目，清单标记 download-on-install。
+
+## 个人非商业自用离线包补充（2026-10-18）
+
+用户明确选择内置原版官方 MSI，并确认仅个人非商业自用、不公开分发。本次提供独立的私用打包入口，不把个人用途声明伪装成商业/OEM 再分发授权。原始 MSI 仍受其原始条款约束，默认公开安装包继续采用官方下载模式。
+
+[个人离线构建](https://github.com/ec000/GameLink/actions/runs/39103736272) 与 [默认 Windows/Linux 回归](https://github.com/ec000/GameLink/actions/runs/39103729234) 全部通过，打包源码提交 `1763d718157ec72bf615d61ec6654aac3e2b79bf`。个人安装器复用固定 SHA-256 的已验证 0.5.0 Qt 6.8.3 Windows ZIP，基线应用提交 c0c9a15；没有重编译或改动客户端/ZeroTier 二进制。
+
+私用 Windows runner 上真实验证：取消 ZeroTier 任务仅安装 GameLink；默认任务使用内嵌 MSI（必须出现 ZT_PREREQ_BUNDLED 且没有 ZT_PREREQ_OFFICIAL_DOWNLOAD）；内置 MSI 与经签名/产品/哈希核对的原包一致；服务 Running、本地 API 版本/节点格式与 GUI 自检正常；重复安装跳过且保留原身份与 Stopped 状态；卸载 GameLink 保留独立服务和身份；最后单独卸载官方 MSI 后服务消失。未执行真实网络 join 或游戏联机，不把安装成功当作 P2P 验证。
+
+原始离线 EXE/MSI/ZIP/stage 未上传为公开 artifact。传输使用一次性 256 位密钥、AES-GCM 与认证头；上传前完成 PowerShell 加密 → Node 认证解密 → 文件 SHA-256 一致检查。本机也完成认证解密，并确认哈希/大小与 Windows 测试文件一致。本地篡改测试证明认证失败不会写出明文。成功交付后已删除 GitHub 临时 Secret、临时密文 artifact 和本机密钥/密文/测试文件，复查远端 Secret 与 artifact 数量均为零。
+
+本地私用文件：build/artifacts/windows-0.5.0-personal/GameLink-0.5.0-Offline-Personal-Setup.exe，49,521,076 字节，SHA-256 `5386787ffca96b40fd10096abd1529f9897b81bc504410338bbaa24cadf8bac6`；目录权限 0700、文件权限 0600。原始 ZeroTier MSI SHA-256 仍为 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。未创建 GitHub Release，未公开上传个人离线二进制。源码/流程说明见 PERSONAL_OFFLINE_PACKAGE.md。
+
+边界与默认版相同：安装 MSI 无需重新下载，但真实联机仍需网络；Windows UAC、驱动/重启和标准用户跨账号矩阵未做交互式实机验收。GameLink 安装器未签名，不替换 planet/moon，不复制 Token。私用文件不能当作已经获准公开再分发的发行版。

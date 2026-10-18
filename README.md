@@ -10,11 +10,17 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用设置页的明确卸载操作。本次下载的原版 MSI 缓存到应用目录，供后续修复；跳过下载时不创建缓存。
 
-官方 Windows 1.16.2 **实际二进制声明 Source-Available 许可**，与默认源码构建的 MPL-only 说明不同。默认包因此不内置/再分发其 MSI；内置离线模式需取得相应再分发授权，不能用 MPL 通知替代。使用官方客户端仍须遵守其条款，商业用途按官方许可办理。核验依据见 [调研记录](docs/RESEARCH.md)，完整通知见 [第三方许可](third_party/zerotier/NOTICE.txt)。
+官方 Windows 1.16.2 **实际二进制声明 Source-Available 许可**，与默认源码构建的 MPL-only 说明不同。默认包因此不内置/再分发其 MSI；公开分发的内置离线包需取得相应再分发权限，不能用 MPL 通知替代。使用官方客户端仍须遵守其条款，商业用途按官方许可办理。核验依据见 [调研记录](docs/RESEARCH.md)，完整通知见 [第三方许可](third_party/zerotier/NOTICE.txt)。
 
 构建时核对官方 MSI 的 SHA-256、Authenticode 发布者及产品版本；安装时从固定 HTTPS 地址下载并再次校验哈希，禁止使用在线 latest 漂移版本。[来源与校验清单](deploy/zerotier-package.json)。后续用户提供的 planet/moon 文件尚未集成。
 
 [0.5 Windows/Linux CI](https://github.com/ec000/GameLink/actions/runs/39102452054) 已通过真实安装、重复安装跳过及独立卸载检查。验证详情见 [安装说明](docs/ZEROTIER_INSTALLATION.md) 与 [测试报告](docs/TEST_REPORT.md)。GameLink EXE 尚未签名，Windows 可能显示“未知发布者”；ZeroTier MSI 保留官方签名。
+
+## 个人自用离线包
+
+针对用户已确认的“仅个人非商业自用，不公开分发”，新增内置原版官方 MSI 的私用构建模式。安装阶段无需下载 MSI；原始服务/驱动/UI、签名和条款均保留。私用 EXE 经实际 Windows 安装/重复安装/卸载检查后，加密传回本机，不作为公开二进制分发。
+
+[私用构建与传输说明](docs/PERSONAL_OFFLINE_PACKAGE.md)、[验证记录](docs/TEST_REPORT.md)。个人用途声明不等于商业/OEM/公开再分发授权；默认公开构建仍为一键在线安装。
 
 ## ZeroTier 服务安装/卸载（0.4 新增）
 

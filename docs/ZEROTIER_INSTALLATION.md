@@ -15,7 +15,7 @@
 
 安装完成后仍需配置 GameLink 服务器及受保护的本地 API Token；安装器不会获取或复制 API 凭证，也不会替换 planet/moon。
 
-官方 1.16.2 Windows 实际二进制声明 Source-Available 许可，并非纯 MPL。默认不随 GameLink 再分发该 MSI；用户使用仍需遵守其条款。取得相应再分发授权后，构建者才可显式使用 `-BundleZeroTier -RedistributionAuthorized` 生成离线嵌入版；该开关是构建者的授权声明，不会赋予许可权利。当前交付为一键在线安装版。
+官方 1.16.2 Windows 实际二进制声明 Source-Available 许可，并非纯 MPL。默认不随 GameLink 再分发该 MSI；用户使用仍需遵守其条款。取得相应再分发授权后，构建者才可显式使用 `-BundleZeroTier -RedistributionAuthorized` 生成离线嵌入版；该开关是构建者的授权声明，不会赋予许可权利。公开交付为一键在线安装版。针对已确认的个人非商业自用，可通过独立的 package-personal-offline.ps1 与手动私用工作流生成内置原版 MSI 的个人离线包，不声明商业/公开再分发授权；详见 [个人离线包](PERSONAL_OFFLINE_PACKAGE.md)。
 
 ## 设置页手动管理
 
