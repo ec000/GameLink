@@ -111,6 +111,13 @@ try {
     Remove-GameLink '05-remove-gamelink'
     if ((Get-Service $serviceName).Status -ne 'Running' -or (Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'GameLink uninstall affected ZeroTier' }
     Write-Host 'PASS: one-click EXE opt-out, default real MSI installation, running service/API, bundled GUI startup, idempotent reinstall and independent uninstall.'
+} catch {
+    # Only installer/service diagnostics: never emit API tokens or world data.
+    Get-ChildItem $logs -Filter '*.log' | ForEach-Object {
+        Select-String -LiteralPath $_.FullName -Pattern 'Error|错误|失败|ZT_ROOTS|ZT_PREREQ|需要|未就绪' | Select-Object -Last 15 | ForEach-Object { Write-Host $_.Line }
+    }
+    Get-CimInstance Win32_Service -Filter "Name='ZeroTierOneService'" | Select-Object Name, PathName, State | Format-List | Out-Host
+    throw
 } finally {
     # Inno's original unins000.exe may still await asynchronous self-deletion.
     # Only uninstall again when the actual application remains installed.

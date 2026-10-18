@@ -10,6 +10,7 @@ $backup = $null
 $changed = @()
 $wasRunning = $false
 $serviceTouched = $false
+$phase = 1
 function Assert-PlainPath([string]$Path) {
     $current = [IO.Path]::GetFullPath($Path)
     while ($current) {
@@ -42,6 +43,7 @@ try {
     foreach ($name in @('planet', $moonName)) { Assert-PlainPath (Join-Path $PSScriptRoot $name) }
     Check-Hash (Join-Path $PSScriptRoot 'planet') $planetHash
     Check-Hash (Join-Path $PSScriptRoot $moonName) $moonHash
+    $phase = 2
     Assert-PlainPath $dataDir
     if (-not (Test-Path -LiteralPath $dataDir -PathType Container)) { exit 22 }
     # Only the official standard data location. Never infer a writable location
@@ -64,6 +66,7 @@ try {
         if (-not (Test-Path -LiteralPath $item.Path) -or (Get-FileHash -LiteralPath $item.Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $item.Hash) { $changed += $item }
     }
     if ($changed.Count -eq 0) { exit 0 } # Do not restart on identical reinstall.
+    $phase = 3
     $backupRoot = Join-Path $dataDir 'gamelink-root-backups'
     Assert-PlainPath $backupRoot
     $backup = Join-Path $backupRoot ([DateTime]::UtcNow.ToString('yyyyMMddTHHmmss') + '-' + [Guid]::NewGuid().ToString('N'))
@@ -77,6 +80,7 @@ try {
         $acl.AddAccessRule($rule)
     }
     Set-Acl -LiteralPath $backup -AclObject $acl
+    $phase = 4
     $serviceTouched = $true
     Stop-ZeroTier
     # Back up *all* destinations before making the first change.
@@ -85,11 +89,13 @@ try {
         if ($item.Existed) { Copy-Item -LiteralPath $item.Path -Destination (Join-Path $backup $item.Name) }
     }
     $changed | Select-Object Name, Path, Existed | ConvertTo-Json | Set-Content (Join-Path $backup 'manifest.json') -Encoding UTF8
+    $phase = 5
     foreach ($item in $changed) {
         New-Item -ItemType Directory -Path (Split-Path -Parent $item.Path) -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $item.Name) -Destination $item.Path -Force
         Check-Hash $item.Path $item.Hash
     }
+    $phase = 6
     if ($wasRunning) { Start-ZeroTier }
     exit 0
 } catch {
@@ -107,5 +113,5 @@ try {
             if ($wasRunning) { Start-ZeroTier }
         }
     } catch { exit 24 } # Rollback/service restoration requires manual attention.
-    exit 23
+    exit (30 + $phase)
 }

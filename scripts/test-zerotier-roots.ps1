@@ -19,7 +19,7 @@ $tamper = Join-Path $env:RUNNER_TEMP ([Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $tamper | Out-Null
 Copy-Item (Join-Path $PayloadDirectory '*') $tamper
 [IO.File]::WriteAllText((Join-Path $tamper 'planet'), 'tampered')
-Invoke-Helper (Join-Path $tamper 'apply-zerotier-roots.ps1') 23
+Invoke-Helper (Join-Path $tamper 'apply-zerotier-roots.ps1') 31
 Remove-Item $tamper -Recurse -Force
 # Fail after the planet has been replaced: a file blocks the moons.d directory.
 # The original planet from installation is used to prove rollback byte-for-byte.
@@ -35,7 +35,7 @@ Copy-Item $priorPlanet $planet -Force
 $priorHash = (Get-FileHash $planet -Algorithm SHA256).Hash
 try {
     [IO.File]::WriteAllText($moons, 'blocking fixture')
-    Invoke-Helper $script 23
+    Invoke-Helper $script 35
     if ((Get-FileHash $planet -Algorithm SHA256).Hash -ne $priorHash) { throw 'Rollback failed to restore planet' }
     if ((Get-Service ZeroTierOneService).Status -ne 'Stopped') { throw 'Rollback started previously stopped service' }
 } finally {
