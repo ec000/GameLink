@@ -19,12 +19,12 @@ foreach ($registryRoot in $uninstallRoots) {
 if ((Get-Service $serviceName -ErrorAction SilentlyContinue) -or (Test-Path "$env:ProgramData/ZeroTier/One/identity.secret") -or (Test-Path $target)) {
     throw 'Refusing lifecycle test: pre-existing service, identity or test installation'
 }
-function Run-Checked([string]$File, [string[]]$Arguments, [switch]$Elevated) {
+function Run-Checked([string]$File, [string[]]$Arguments, [switch]$Elevated, [int[]]$AllowedExitCodes = @(0, 3010)) {
     $start = @{FilePath=$File; ArgumentList=$Arguments; PassThru=$true}
     if ($Elevated) { $start.Verb = 'RunAs' }
     $process = Start-Process @start
     if (-not $process.WaitForExit(180000)) { $process.Kill(); throw "Timed out: $File" }
-    if ($process.ExitCode -notin @(0, 3010)) { throw "Installer failed: $($process.ExitCode), $File" }
+    if ($process.ExitCode -notin $AllowedExitCodes) { throw "Installer failed: $($process.ExitCode), $File" }
 }
 function Run-Setup([string]$LogName, [string[]]$Extra) {
     Run-Checked $setup.FullName (@('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$target`"", "/LOG=`"$logs/$LogName.log`"") + $Extra)
@@ -69,7 +69,9 @@ try {
     $token = $null
     Run-Checked (Join-Path $target 'GameLink.exe') @('--self-test')
     # Service control, like MSI installation, needs an elevated system tool.
-    Run-Checked "$env:SystemRoot/System32/sc.exe" @('stop', $serviceName) -Elevated
+    Run-Checked "$env:SystemRoot/System32/sc.exe" @('stop', $serviceName) -Elevated -AllowedExitCodes @(0, 109)
+    # SCM can report ERROR_BROKEN_PIPE while the service exits. It is not
+    # accepted as a successful stop unless the following real status check passes.
     (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
     Run-Setup '04-repeat-install' @('/TASKS=zerotier')
     if (-not (Select-String -LiteralPath "$logs/04-repeat-install.log" -Pattern 'ZT_PREREQ_SKIP' -SimpleMatch -Quiet)) { throw 'Repeat install did not skip existing same version' }
