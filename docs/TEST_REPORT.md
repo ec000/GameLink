@@ -157,3 +157,17 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 本地私用文件：build/artifacts/windows-0.5.0-personal/GameLink-0.5.0-Offline-Personal-Setup.exe，49,521,076 字节，SHA-256 `5386787ffca96b40fd10096abd1529f9897b81bc504410338bbaa24cadf8bac6`；目录权限 0700、文件权限 0600。原始 ZeroTier MSI SHA-256 仍为 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。未创建 GitHub Release，未公开上传个人离线二进制。源码/流程说明见 PERSONAL_OFFLINE_PACKAGE.md。
 
 边界与默认版相同：安装 MSI 无需重新下载，但真实联机仍需网络；Windows UAC、驱动/重启和标准用户跨账号矩阵未做交互式实机验收。GameLink 安装器未签名，不替换 planet/moon，不复制 Token。私用文件不能当作已经获准公开再分发的发行版。
+
+## 自建根节点个人定制包补充（2026-10-18）
+
+[定制离线包 Windows 验证](https://github.com/ec000/GameLink/actions/runs/39114565444) 与 [默认 Windows/Linux 回归](https://github.com/ec000/GameLink/actions/runs/39114563937) 全部通过。安装器/脚本源提交 bbbf4de；Qt 应用仍使用 personal-offline-base.json 固定的已验证 0.5.0 基线。
+
+用户提供的两个文件按公开 World/Identity/InetAddress 格式检查通过，没有序列化身份私钥；Planet 与 Moon 指向同一个根节点。对截断、尾随数据、错误类型和含私钥的身份构造进行本机拒绝检查。格式校验不宣称验证了签名密钥归属或网络可达性。
+
+真实一次性 Windows runner 验证：默认任务安装原版 MSI，并把内置文件配置到标准机器数据目录，文件哈希与输入一致；API `/moon` 确认已加载该 Moon；旧 Planet 有管理员/SYSTEM 备份。相同配置重复执行不增加备份；输入损坏被拒绝；人为用文件阻塞 moons.d 后，写 Planet 成功、写 Moon 失败，旧 Planet 按字节恢复，原先停止的服务仍停止。恢复目录后再次配置成功，身份哈希未变。后续安装器重复执行保留已停止的服务；卸载 GameLink 保留 ZeroTier 与身份；单独卸载官方 MSI 后服务移除。Qt GUI 自检通过。
+
+修复了实际发现的两个环境问题：UAC 子进程继承的模块路径不一定适合 Windows PowerShell 5.1，现从受保护的系统目录显式加载对应模块；ZeroTier 停止时可能先关闭 SCM 管道，只有 SCM 在 30 秒内确认 Stopped 才允许继续写根配置。
+
+边界：API 采样的 `online` 为 false；这次只证明本地安装和 Moon 加载，不证明自建服务器离线，也不证明它已可达。未提供 Network ID/GameLink 服务端登录配置，因此未 join、未授权真实成员、未验证虚拟 IP/P2P/NAT/游戏。Windows 10/11 标准用户、跨账号 UAC、策略/重启等仍需实机验收。安装器尚未签名。
+
+交付文件：build/artifacts/windows-0.5.0-custom-roots/GameLink-0.5.0-CustomRoots-Offline-Personal-Setup.exe，49,530,398 字节，SHA-256 `1c24e0199b458a1cc548efa7bdbfb19e2a2dbb5867a17a9878cffe7917bc1332`。原版 ZeroTier MSI 与 Qt 运行库一同内嵌，新增根节点文件，无须手动复制。安装包认证解密后的本机哈希/大小与 Windows 测试文件一致。最终目录 0700、文件 0600；根节点输入经临时 Secret 传送，未提交二进制到公有仓库，EXE 仅加密上传并已删除远端密文及两项临时 Secret，本机临时密钥、输入捆绑、密文均已清理。原始用户文件保留在用户提供的目录。未创建公开 Release。

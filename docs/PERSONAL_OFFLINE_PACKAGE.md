@@ -4,7 +4,7 @@
 
 ## 内容与安装
 
-个人包在 GameLink EXE 安装器内嵌原版官方 ZeroTier One 1.16.2 MSI；不修改 MSI、服务、驱动或桌面 UI。嵌入前验证 SHA-256、签名发布者及 MSI 产品属性，运行时提取并再次验证 SHA-256。相同或更高的标准版本跳过，不强行启动已有停止服务；按需通过 Windows 请求管理员授权，禁止自动重启。卸载 GameLink 保留独立 ZeroTier 和身份；不改 planet/moon。
+个人包在 GameLink EXE 安装器内嵌原版官方 ZeroTier One 1.16.2 MSI；不修改 MSI、服务、驱动或桌面 UI。嵌入前验证 SHA-256、签名发布者及 MSI 产品属性，运行时提取并再次验证 SHA-256。相同或更高的标准版本跳过，不强行启动已有停止服务；按需通过 Windows 请求管理员授权，禁止自动重启。卸载 GameLink 保留独立 ZeroTier 和身份；普通个人包不改 planet/moon，CustomRoots 定制版通过额外任务配置它们。
 
 内嵌 MSI SHA-256：`42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。
 
