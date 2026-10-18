@@ -46,6 +46,11 @@ try {
     $service = Get-Service $serviceName
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     $dataDir = Join-Path $env:ProgramData 'ZeroTier/One'
+    # Confirm the actual official Windows binary's license, rather than inferring
+    # it from repository defaults (Windows project flags can differ from make).
+    $licenseProcess = Start-Process -FilePath (Join-Path $dataDir 'zerotier-one_x64.exe') -ArgumentList @('-q', '-h') -PassThru -Wait -NoNewWindow -RedirectStandardOutput "$logs/zerotier-binary-license.log" -RedirectStandardError "$logs/zerotier-binary-license-error.log"
+    $licenseText = (Get-Content "$logs/zerotier-binary-license.log" -Raw) + (Get-Content "$logs/zerotier-binary-license-error.log" -Raw)
+    if ($licenseText -notmatch 'Mozilla Public License' -or $licenseText -match 'Source-Available License') { throw 'Official Windows binary is not an MPL-only agent; redistribution terms require separate review before packaging' }
     $identityPath = Join-Path $dataDir 'identity.secret'
     for ($attempt = 0; $attempt -lt 30 -and -not (Test-Path $identityPath); $attempt++) { Start-Sleep -Seconds 1 }
     $identityHash = (Get-FileHash $identityPath -Algorithm SHA256).Hash
