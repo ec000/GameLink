@@ -20,7 +20,7 @@
 - Microsoft [MsiEnumProductsExW](https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msienumproductsexw)：使用 MACHINE 上下文、NULL 用户 SID 枚举计算机级安装，产品通过同线程递增索引读取。卸载按产品 GUID 调用 Windows Installer，未执行注册表中的任意卸载命令。
 - Microsoft [ShellExecuteExW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecuteexw) 与 [WinVerifyTrust](https://learn.microsoft.com/en-us/windows/win32/api/wintrust/nf-wintrust-winverifytrust)：主 GUI 不提权，明确操作后由系统安装器请求 UAC；安装前验证签名与发布者，随后跟踪安装器进程结果。
 
-Windows CI 已只读验证该官方 MSI 的正向识别；真实安装/驱动/UAC 流程尚未验收。这是 0.4 的验证范围；0.5 已新增随包分发，见下文。
+Windows CI 已只读验证该官方 MSI 的正向识别；真实安装/驱动/UAC 流程尚未验收。这是 0.4 的验证范围；0.5 已新增一键官方下载与安装，见下文。
 
 ## Windows 实际二进制许可核对（2026-10-18）
 

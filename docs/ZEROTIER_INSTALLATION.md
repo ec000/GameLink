@@ -9,7 +9,7 @@
 - 较旧的标准 MSI：调用官方 MSI 升级；相同版本缺少服务：尝试修复。较新版本缺少服务时拒绝降级，提示使用原版本修复。
 - 非标准服务、未知/无法可靠读取的版本：停止自动安装，可返回取消 ZeroTier 任务，仅装 GameLink。
 - UAC/安装取消、安装冲突或其他错误：明确显示原因并阻止继续安装 GameLink。3010/1641 提示手动重启，不主动重启电脑。
-- 取消勾选 ZeroTier 可仅安装 GameLink。卸载 GameLink 只移除自身文件和随包 MSI，保留独立 ZeroTier 与其身份/网络数据。
+- 取消勾选 ZeroTier 可仅安装 GameLink。卸载 GameLink 只移除自身文件和本次下载缓存的 MSI，保留独立 ZeroTier 与其身份/网络数据。
 
 构建脚本从 `deploy/zerotier-package.json` 读取固定版本/官方来源/校验值，检查 SHA-256、Authenticode 及 MSI 产品属性后才构建。默认 EXE/ZIP 不附带 MSI，安装时直接从官方源下载，固定哈希验证成功后才执行；本次下载的 MSI 缓存到应用目录供修复。随包通知和源码链接位于 `licenses/zerotier`，Qt 通知位于 `licenses/qt`。安装器默认简体中文，也可选择英文。GameLink EXE 尚未签名，官方 MSI 保留签名。
 
@@ -63,7 +63,13 @@
 
 GameLink 不主动删除 identity、网络或根配置。**官方卸载器可能调整其自身数据，不能承诺保留这些文件。** 如需保留，请在卸载前按官方方式备份。后续提供文件后，再实现来源/格式校验、明确展示变更、备份/回滚与所需权限；不把未实现的导入能力计作当前功能。
 
-## 验证状态
+## 0.5 验证状态
+
+[Windows/Linux CI](https://github.com/ec000/GameLink/actions/runs/39102452054) 全部通过：Windows 原生编译、CTest 3/3、官方签名/产品识别、Qt/CRT 独立部署、Inno EXE 编译，以及全新一次性 runner 上的真实官方下载/安装、服务/API、自检、重复安装跳过与身份/Stopped 状态保留。卸载 GameLink 后 ZeroTier 仍运行、身份不变；最后单独用官方 MSI 卸载 ZeroTier，服务消失。
+
+默认包不含官方 MSI；安装需要联网，并可在失败时返回取消该任务。手动 UAC、跨账号标准用户、旧版升级/更高版本、驱动策略/重启与 Windows 10/11 桌面矩阵仍需实机验收。GameLink EXE 尚未签名，planet/moon 不变。详见 [测试报告](TEST_REPORT.md)。
+
+## 0.4 基线验证（历史）
 
 本机 macOS / Qt 6.11.2 已编译 GUI，使用注入的 mock 安装平台验证产品/错误识别、无效包拒绝、重复任务阻止、取消与重启结果、对象销毁后回调、卸载确认、任务期间不能关闭以及完成后刷新。非 Windows 显示不支持并禁用安装/卸载。
 

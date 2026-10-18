@@ -14,7 +14,7 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 构建时核对官方 MSI 的 SHA-256、Authenticode 发布者及产品版本；安装时从固定 HTTPS 地址下载并再次校验哈希，禁止使用在线 latest 漂移版本。[来源与校验清单](deploy/zerotier-package.json)。后续用户提供的 planet/moon 文件尚未集成。
 
-验证详情见 [安装说明](docs/ZEROTIER_INSTALLATION.md) 与 [测试报告](docs/TEST_REPORT.md)。GameLink EXE 尚未签名，Windows 可能显示“未知发布者”；ZeroTier MSI 保留官方签名。
+[0.5 Windows/Linux CI](https://github.com/ec000/GameLink/actions/runs/39102452054) 已通过真实安装、重复安装跳过及独立卸载检查。验证详情见 [安装说明](docs/ZEROTIER_INSTALLATION.md) 与 [测试报告](docs/TEST_REPORT.md)。GameLink EXE 尚未签名，Windows 可能显示“未知发布者”；ZeroTier MSI 保留官方签名。
 
 ## ZeroTier 服务安装/卸载（0.4 新增）
 

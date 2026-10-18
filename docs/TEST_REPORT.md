@@ -117,14 +117,29 @@ CI 只读检查官方 ZeroTier One 1.16.2 MSI，固定 URL 为 https://download.
 
 ## 0.5 一键安装官方 ZeroTier（2026-10-18）
 
-本机 macOS arm64 / Qt 6.11.2 完整构建、CTest 3/3、Python 调查测试 2/2 通过。只有 Windows 的官方 MSI 检查在本机跳过，由 Windows CI 覆盖。
+[最终 Windows/Linux CI](https://github.com/ec000/GameLink/actions/runs/39102452054) 全部通过，构建提交 `c0c9a15c4efdc5e34fbc3afe26116dd4957242d8`。本机 macOS arm64 / Qt 6.11.2 完整构建、CTest 3/3、Python 2/2 与更新后的启动自检通过；Windows 专属 MSI 测试在本机跳过，由 Windows CI 覆盖。
 
-打包版本固定为原版官方 ZeroTier One 1.16.2，SHA-256 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。构建额外验证 Authenticode 与 MSI 元数据；默认 EXE 与 ZIP 不附带 MSI；EXE 按需直接从官方源下载后验证固定哈希，再安装并缓存用于修复。附带相关许可与源码获取说明。
+Windows Server 2022 / MSVC 2022 / Qt 6.8.3：CTest 3/3（Qt 客户端共 19 项）、固定官方 MSI 的签名/发布者/产品识别、Qt/CRT 部署及清除 SDK 环境后的启动/TLS 检查通过。Inno Setup 6.7.1 成功编译包含简体中文向导的一键 EXE。
 
-首轮 Windows CI 成功编译中文 Inno Setup 6.7.1 EXE、执行 Qt 回归、隔离 SDK 的启动/TLS 检查，并实际执行“取消 ZeroTier 任务 → 安装 GameLink → 卸载 GameLink”。测试随后因 PowerShell Select-String 参数位置错误中止；已修复日志断言。同时根据官方 MSI 工程兼容其额外的自定义 ARP 登记，仅使用真正 Windows Installer 登记判断版本。
+以下在全新一次性 Windows runner 上使用真实安装器完成，不属于 mock：
 
-第二轮已真实安装 ZeroTier 1.16.2，确认服务 Running、身份生成、本地 API 的版本/节点格式，以及安装后 GameLink 自检通过。测试在 PowerShell Stop-Service 控制步骤被拒，已改为明确提权的系统 sc.exe；官方 MSI 的显式卸载清理已通过。
+| 检查 | 结果 |
+|---|---|
+| 取消 ZeroTier 任务 | 仅安装/卸载 GameLink，未创建 ZeroTier 服务 |
+| 默认任务 | 从官方 HTTPS 下载 1.16.2，固定 SHA-256 校验后实际运行 MSI，安装成功 |
+| 初始运行 | 服务 Running，生成身份，本地 API 返回正确版本和节点格式 |
+| 安装后客户端 | GameLink 自检通过，识别并验证本次下载缓存的 MSI |
+| 重复安装 | 日志为 ZT_PREREQ_SKIP；identity.secret 的 SHA-256 不变，原先停止的服务保持 Stopped |
+| 卸载 GameLink | 等待 Inno 记录成功；GameLink.exe 消失，独立 ZeroTier 仍 Running，原身份不变 |
+| 显式卸载 ZeroTier | 官方 MSI /x 成功，服务消失 |
+| 默认分发内容 | stage 不含 ZeroTier MSI；EXE 按需从官方直接下载，ZIP 不附带该 MSI |
 
-进一步核验发现官方 Windows Release 工程启用 nonfree/controller，实际 MSI 提取的二进制也声明 Source-Available。原先据默认构建发行说明推断 MPL-only 不正确，已纠正全部当前文档/通知，并为实际二进制增加 -q -h 核验。未取得用户再分发授权，默认交付调整为一键官方下载并安装；不上传包含 MSI 的离线产物。使用原版客户端仍受官方许可约束，不能把在线安装方式视作商业使用授权。
+CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实查询 SCM 为 Stopped 时接受，不把退出码直接视为成功。Inno 原始卸载器的自删除可能晚于启动进程退出，测试等待卸载成功日志，且不重复执行残留卸载器。Qt action 使用同一固定提交的 JS 入口，避免部分 runner 后置阶段不支持其复合入口的 $/action 语法。
 
-最终 Windows 生命周期验证与产物记录在复验完成后补充。
+官方样本：ZeroTier One 1.16.2，SHA-256 `42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。只读提取 MSI 与 Windows -q -h 帮助均确认其实际二进制声明 Source-Available；不能按默认源码构建说明推断为 MPL-only。默认交付不内置/再分发此 MSI，许可和源码通知已纠正。离线嵌入模式需相应再分发授权，当前没有交付离线版。
+
+产物：`GameLink-0.5.0-Setup.exe`（一键在线安装）与 `GameLink-0.5.0-Windows.zip`，分别提供于 GameLink-Windows-Installer / GameLink-Windows-Qt6 artifact；日志位于 GameLink-Windows-Installer-Logs。源码归档及 SHA-256 校验清单位于本地 build 目录。
+
+边界：CI 为管理员/自动化环境，未手动验收 Windows 10/11 标准用户 UAC 同意/取消、跨账号提权、旧版升级/更高版本保留、重启与驱动策略矩阵。服务/API 就绪不等于虚拟网卡加载、真实 join、P2P、NAT 或游戏验收；这些仍按既有测试计划执行。没有在用户本机安装服务，没有导入或修改 planet/moon。GameLink 程序与安装器尚未代码签名。
+
+0.5.0 安装器 SHA-256：`1f12d10b10083e16f3f38c234de0be184e9723aa38cfce2f00e485a658f1d0d7`（41,480,637 字节）。ZIP SHA-256：`3aad8c0be9f2699dde5082df031a651ab2b07719423648c80f1bb9d5c7361c13`（49,610,513 字节）。本地已校验 ZIP 全量 CRC、Qt/CRT/许可依赖及无 MSI 条目，清单标记 download-on-install。
