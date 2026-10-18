@@ -41,7 +41,8 @@ try {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 20 }
     if ($planetHash -notmatch '^[a-f0-9]{64}$' -or $moonHash -notmatch '^[a-f0-9]{64}$' -or $moonName -notmatch '^[a-f0-9]{16}\.moon$') { exit 21 }
-    foreach ($name in @('planet', $moonName)) { Assert-PlainPath (Join-Path $PSScriptRoot $name) }
+    # Installer temp directories can legitimately be redirected. Source bytes
+    # are pinned and locked by Inno; enforce plain paths on machine destinations.
     Check-Hash (Join-Path $PSScriptRoot 'planet') $planetHash
     Check-Hash (Join-Path $PSScriptRoot $moonName) $moonHash
     if ($ValidatePayloadOnly) { exit 0 }

@@ -64,6 +64,17 @@ if ($CustomRootsDirectory) {
     # Exercise the actual Windows PowerShell 5.1 runtime before embedding it.
     & "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptPath -ValidatePayloadOnly
     if ($LASTEXITCODE -ne 0) { throw 'Native Windows PowerShell payload preflight failed' }
+    # Reproduce Inno's read-only payload locks, also in the 32-bit host.
+    $locks = @()
+    try {
+        foreach ($file in @($scriptPath, (Join-Path $rootsDir 'planet'), (Join-Path $rootsDir $moonName))) {
+            $locks += [IO.File]::Open($file, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        }
+        foreach ($shellDir in @('System32', 'SysWOW64')) {
+            & "$env:SystemRoot/$shellDir/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptPath -ValidatePayloadOnly
+            if ($LASTEXITCODE -ne 0) { throw "Locked payload preflight failed in $shellDir host" }
+        }
+    } finally { foreach ($lock in $locks) { $lock.Dispose() } }
     $scriptHash = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $inspection | Set-Content (Join-Path $rootsDir 'manifest.json') -Encoding UTF8
     $extraDefines = @('/DCustomZeroTierRoots', "/DCustomRootsDir=$rootsDir", "/DCustomMoonName=$moonName", "/DCustomPlanetSHA256=$($worlds.planet.sha256)", "/DCustomMoonSHA256=$($worlds.moon.sha256)", "/DCustomRootsScriptSHA256=$scriptHash")
