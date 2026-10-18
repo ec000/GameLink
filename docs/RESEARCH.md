@@ -11,7 +11,7 @@
 
 ## 许可检查
 
-[upstream README](https://github.com/zerotier/ZeroTierOne) 将 agent/service 与 nonfree 目录区分；[MPL](https://github.com/zerotier/ZeroTierOne/blob/dev/LICENSE-MPL.txt) 覆盖相应 agent 源码；[nonfree/LICENSE.md](https://github.com/zerotier/ZeroTierOne/blob/dev/nonfree/LICENSE.md) 对 Controller 等组件有独立条款。不能笼统宣称整包都是 MPL。本项目不复制/打包 ZeroTier 二进制，Windows 用户单独安装官方发行版。VPS 具体版本、构建选项及许可未知，上线/商业分发前针对实际发行包核对。Qt 动态库分发也需要满足实际 Qt 许可，安装方案保留该责任。
+[upstream README](https://github.com/zerotier/ZeroTierOne) 将 agent/service 与 nonfree 目录区分；[MPL](https://github.com/zerotier/ZeroTierOne/blob/dev/LICENSE-MPL.txt) 覆盖相应 agent 源码；[nonfree/LICENSE.md](https://github.com/zerotier/ZeroTierOne/blob/dev/nonfree/LICENSE.md) 对 Controller 等组件有独立条款。不能笼统宣称整包都是 MPL。0.4 及此前不打包 ZeroTier；0.5 根据下方固定版本的发行构成与许可核对，附带原版官方 MSI 作为独立组件。VPS 具体版本、构建选项及许可未知，上线/商业分发前针对实际发行包核对。Qt 动态库分发也需要满足实际 Qt 许可，安装方案保留该责任。
 
 ## Windows 服务安装管理核对（2026-10-17）
 
@@ -20,4 +20,12 @@
 - Microsoft [MsiEnumProductsExW](https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msienumproductsexw)：使用 MACHINE 上下文、NULL 用户 SID 枚举计算机级安装，产品通过同线程递增索引读取。卸载按产品 GUID 调用 Windows Installer，未执行注册表中的任意卸载命令。
 - Microsoft [ShellExecuteExW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecuteexw) 与 [WinVerifyTrust](https://learn.microsoft.com/en-us/windows/win32/api/wintrust/nf-wintrust-winverifytrust)：主 GUI 不提权，明确操作后由系统安装器请求 UAC；安装前验证签名与发布者，随后跟踪安装器进程结果。
 
-Windows CI 已只读验证该官方 MSI 的正向识别；真实安装/驱动/UAC 流程尚未验收。GameLink 不分发下载的 ZeroTier MSI，不自动接受其安装许可，也不更改其 planet/moon 配置。
+Windows CI 已只读验证该官方 MSI 的正向识别；真实安装/驱动/UAC 流程尚未验收。这是 0.4 的验证范围；0.5 已新增随包分发，见下文。
+
+## 离线分发核对（2026-10-18）
+
+- [官方下载页](https://www.zerotier.com/download/) 与 [changelog](https://docs.zerotier.com/changelog/) 当前 Windows 稳定版为 1.16.2。使用上文固定发布路径和 SHA-256；不使用在线 latest 地址。
+- [1.16.2 README](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/README.md)、[LICENSE.txt](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/LICENSE.txt) 区分 MPL 2.0 agent/service、ext 原始依赖许可和 nonfree。默认发行 agent 自 1.16.0 起不包含 Controller；不添加 ZT_NONFREE 构建或 Controller 功能。
+- [DesktopUI](https://github.com/zerotier/DesktopUI) 使用 MPL 2.0，并保留原始依赖通知。GameLink 不修改官方 MSI；提供完整 MPL、固定 agent 源码/源码归档和 DesktopUI 源码地址，原始 MSI 保留其内置依赖通知，不声称官方背书。通知见 third_party/zerotier。
+- 使用 [Inno Setup PrepareToInstall](https://jrsoftware.org/ishelp/topic_scriptevents.htm) 在应用文件安装前完成先决组件；文件锁和固定 SHA-256 防止临时 MSI 被调包，系统 msiexec 的 runas 请求管理员授权。独立 MSI 不加入 GameLink 卸载链。
+- Windows Qt 6.8.3 动态库保留独立 DLL，可替换兼容版本；随包提供 LGPL/GPL 文本、源码获取地址和 Qt 原始依赖许可索引。此说明仅覆盖当前固定 SDK，切换 Qt 版本需同步检查。

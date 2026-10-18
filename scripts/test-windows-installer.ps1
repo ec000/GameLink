@@ -35,12 +35,12 @@ $installedZeroTier = $false
 try {
     Run-Setup '01-opt-out' @('/MERGETASKS=!zerotier')
     if (Get-Service $serviceName -ErrorAction SilentlyContinue) { throw 'Opt-out unexpectedly installed ZeroTier' }
-    if (-not (Select-String "$logs/01-opt-out.log" -SimpleMatch 'ZT_PREREQ_OPT_OUT' -Quiet)) { throw 'Missing opt-out evidence' }
+    if (-not (Select-String -LiteralPath "$logs/01-opt-out.log" -Pattern 'ZT_PREREQ_OPT_OUT' -SimpleMatch -Quiet)) { throw 'Missing opt-out evidence' }
     Remove-GameLink '02-remove-opt-out'
     # No task override: proves the default selection installs the bundled prerequisite.
     Run-Setup '03-default-install' @()
     $installedZeroTier = $true
-    if (-not (Select-String "$logs/03-default-install.log" -SimpleMatch 'ZT_PREREQ_SUCCESS' -Quiet)) { throw 'Missing real MSI installation evidence' }
+    if (-not (Select-String -LiteralPath "$logs/03-default-install.log" -Pattern 'ZT_PREREQ_SUCCESS' -SimpleMatch -Quiet)) { throw 'Missing real MSI installation evidence' }
     $service = Get-Service $serviceName
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     $dataDir = Join-Path $env:ProgramData 'ZeroTier/One'
@@ -50,12 +50,18 @@ try {
     # Verify the local service API without logging its credential or identity contents.
     $token = [IO.File]::ReadAllText((Join-Path $dataDir 'authtoken.secret')).Trim()
     $status = Invoke-RestMethod 'http://127.0.0.1:9993/status' -Headers @{'X-ZT1-Auth'=$token}
-    if ($status.version -ne '1.16.2' -or $status.address -notmatch '^[a-f0-9]{10}$') { throw 'Unexpected local API version/address' }
+    $manifest = Get-Content (Join-Path $root 'deploy/zerotier-package.json') -Raw | ConvertFrom-Json
+    if ($status.version -ne $manifest.version -or $status.address -notmatch '^[a-f0-9]{10}$') { throw 'Unexpected local API version/address' }
     $token = $null
     Run-Checked (Join-Path $target 'GameLink.exe') @('--self-test')
+    Stop-Service $serviceName
+    (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
     Run-Setup '04-repeat-install' @('/TASKS=zerotier')
-    if (-not (Select-String "$logs/04-repeat-install.log" -SimpleMatch 'ZT_PREREQ_SKIP' -Quiet)) { throw 'Repeat install did not skip existing same version' }
+    if (-not (Select-String -LiteralPath "$logs/04-repeat-install.log" -Pattern 'ZT_PREREQ_SKIP' -SimpleMatch -Quiet)) { throw 'Repeat install did not skip existing same version' }
     if ((Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'Repeat install changed ZeroTier identity' }
+    if ((Get-Service $serviceName).Status -ne 'Stopped') { throw 'Repeat install unexpectedly started an existing stopped service' }
+    Start-Service $serviceName
+    (Get-Service $serviceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     Remove-GameLink '05-remove-gamelink'
     if ((Get-Service $serviceName).Status -ne 'Running' -or (Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'GameLink uninstall affected ZeroTier' }
     Write-Host 'PASS: offline EXE opt-out, default real MSI installation, running service/API, bundled GUI startup, idempotent reinstall and independent uninstall.'

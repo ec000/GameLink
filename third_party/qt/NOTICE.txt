@@ -1,0 +1,15 @@
+GameLink Windows packages dynamically link the unmodified Qt 6.8.3 libraries
+from the official open-source Qt SDK (QtCore, QtGui, QtWidgets, QtNetwork and
+deployed plugins). Copyright The Qt Company Ltd. and other contributors.
+These libraries are separate components, available under LGPL 3.0 (or their
+applicable alternative license). You may replace the DLLs with ABI-compatible
+modified versions. GameLink does not prohibit reverse engineering needed to
+debug modifications to these libraries.
+
+Corresponding Qt 6.8.3 source, build instructions and original dependency notices:
+https://download.qt.io/official_releases/qt/6.8/6.8.3/single/
+https://code.qt.io/cgit/qt/qtbase.git/tree/?h=v6.8.3
+https://doc.qt.io/qt-6.8/build-sources.html
+https://doc.qt.io/qt-6.8/licenses-used-in-qt.html
+The LGPL and referenced GPL texts are provided alongside this notice.
+Qt is a trademark of The Qt Company Ltd. GameLink is not endorsed by Qt.

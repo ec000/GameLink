@@ -2,13 +2,30 @@
 var
   ZeroTierRestartRequired: Boolean;
 
+function IsNumericVersion(Value: String): Boolean;
+var
+  I, Segments: Integer;
+begin
+  Result := False;
+  if Value = '' then Exit;
+  if (Value[1] = '.') or (Value[Length(Value)] = '.') then Exit;
+  Segments := 1;
+  for I := 1 to Length(Value) do begin
+    if Value[I] = '.' then begin
+      if Value[I - 1] = '.' then Exit;
+      Segments := Segments + 1;
+    end else if (Value[I] < '0') or (Value[I] > '9') then Exit;
+  end;
+  Result := Segments <= 4;
+end;
+
 function CompareVersion(A, B: String; var Valid: Boolean): Integer;
 var
   I, P, VA, VB: Integer;
   PartA, PartB: String;
 begin
   Result := 0;
-  Valid := (A <> '') and (B <> '');
+  Valid := IsNumericVersion(A) and IsNumericVersion(B);
   for I := 0 to 3 do begin
     P := Pos('.', A);
     if P > 0 then begin PartA := Copy(A, 1, P - 1); Delete(A, 1, P); end
@@ -38,7 +55,7 @@ begin
   Result := True;
   Key := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall';
   if not RegGetSubkeyNames(Root, Key, Keys) then begin
-    Result := not RegKeyExists(Root, Key);
+    Result := False;
     Exit;
   end;
   for I := 0 to GetArrayLength(Keys) - 1 do begin
