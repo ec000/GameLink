@@ -19,8 +19,10 @@ foreach ($registryRoot in $uninstallRoots) {
 if ((Get-Service $serviceName -ErrorAction SilentlyContinue) -or (Test-Path "$env:ProgramData/ZeroTier/One/identity.secret") -or (Test-Path $target)) {
     throw 'Refusing lifecycle test: pre-existing service, identity or test installation'
 }
-function Run-Checked([string]$File, [string[]]$Arguments) {
-    $process = Start-Process -FilePath $File -ArgumentList $Arguments -PassThru
+function Run-Checked([string]$File, [string[]]$Arguments, [switch]$Elevated) {
+    $start = @{FilePath=$File; ArgumentList=$Arguments; PassThru=$true}
+    if ($Elevated) { $start.Verb = 'RunAs' }
+    $process = Start-Process @start
     if (-not $process.WaitForExit(180000)) { $process.Kill(); throw "Timed out: $File" }
     if ($process.ExitCode -notin @(0, 3010)) { throw "Installer failed: $($process.ExitCode), $File" }
 }
@@ -49,18 +51,23 @@ try {
     $identityHash = (Get-FileHash $identityPath -Algorithm SHA256).Hash
     # Verify the local service API without logging its credential or identity contents.
     $token = [IO.File]::ReadAllText((Join-Path $dataDir 'authtoken.secret')).Trim()
-    $status = Invoke-RestMethod 'http://127.0.0.1:9993/status' -Headers @{'X-ZT1-Auth'=$token}
+    $status = $null
+    for ($attempt = 0; $attempt -lt 30 -and -not $status; $attempt++) {
+        try { $status = Invoke-RestMethod 'http://127.0.0.1:9993/status' -Headers @{'X-ZT1-Auth'=$token} -NoProxy -TimeoutSec 2 -MaximumRedirection 0 }
+        catch { Start-Sleep -Seconds 1 }
+    }
     $manifest = Get-Content (Join-Path $root 'deploy/zerotier-package.json') -Raw | ConvertFrom-Json
     if ($status.version -ne $manifest.version -or $status.address -notmatch '^[a-f0-9]{10}$') { throw 'Unexpected local API version/address' }
     $token = $null
     Run-Checked (Join-Path $target 'GameLink.exe') @('--self-test')
-    Stop-Service $serviceName
+    # Service control, like MSI installation, needs an elevated system tool.
+    Run-Checked "$env:SystemRoot/System32/sc.exe" @('stop', $serviceName) -Elevated
     (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
     Run-Setup '04-repeat-install' @('/TASKS=zerotier')
     if (-not (Select-String -LiteralPath "$logs/04-repeat-install.log" -Pattern 'ZT_PREREQ_SKIP' -SimpleMatch -Quiet)) { throw 'Repeat install did not skip existing same version' }
     if ((Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'Repeat install changed ZeroTier identity' }
     if ((Get-Service $serviceName).Status -ne 'Stopped') { throw 'Repeat install unexpectedly started an existing stopped service' }
-    Start-Service $serviceName
+    Run-Checked "$env:SystemRoot/System32/sc.exe" @('start', $serviceName) -Elevated
     (Get-Service $serviceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     Remove-GameLink '05-remove-gamelink'
     if ((Get-Service $serviceName).Status -ne 'Running' -or (Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'GameLink uninstall affected ZeroTier' }
