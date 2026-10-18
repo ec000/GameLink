@@ -94,6 +94,11 @@ try {
     }
     $manifest = Get-Content (Join-Path $root 'deploy/zerotier-package.json') -Raw | ConvertFrom-Json
     if ($status.version -ne $manifest.version -or $status.address -notmatch '^[a-f0-9]{10}$') { throw 'Unexpected local API version/address' }
+    if ($CustomRoots) {
+        $loadedMoons = @(Invoke-RestMethod 'http://127.0.0.1:9993/moon' -Headers @{'X-ZT1-Auth'=$token} -NoProxy -TimeoutSec 5 -MaximumRedirection 0)
+        if (-not ($loadedMoons | Where-Object { $_.id -eq $worlds.moon.id })) { throw 'Service API did not load the supplied moon' }
+        Write-Host "PASS: local API loaded the supplied moon; node online=$($status.online). Network membership was not requested."
+    }
     $token = $null
     Run-Checked (Join-Path $target 'GameLink.exe') @('--self-test')
     # Service control, like MSI installation, needs an elevated system tool.

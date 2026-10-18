@@ -38,6 +38,11 @@ function Start-ZeroTier {
     (Get-Service $serviceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
 }
 try {
+    # ShellExecute/UAC may inherit a PSModulePath belonging to PowerShell 7.
+    # Load only the Windows host's protected, version-matched system modules.
+    foreach ($module in @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility', 'Microsoft.PowerShell.Security')) {
+        Import-Module ([IO.Path]::Combine($PSHOME, "Modules\$module\$module.psd1")) -Force -ErrorAction Stop
+    }
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     if (-not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 20 }
     if ($planetHash -notmatch '^[a-f0-9]{64}$' -or $moonHash -notmatch '^[a-f0-9]{64}$' -or $moonName -notmatch '^[a-f0-9]{16}\.moon$') { exit 21 }
@@ -52,9 +57,8 @@ try {
     # Only the official standard data location. Never infer a writable location
     # from untrusted service arguments, user settings or a supplied path.
     $service = Get-Service $serviceName
-    $serviceConfig = Get-CimInstance Win32_Service -Filter "Name='ZeroTierOneService'"
     $standardExe = Join-Path $dataDir 'zerotier-one_x64.exe'
-    $serviceCommand = $serviceConfig.PathName
+    $serviceCommand = (Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\ZeroTierOneService' -Name ImagePath).ImagePath
     if ($serviceCommand -notmatch '^(?:"([^"]+)"|(\S+))(?:\s+-s)?\s*$') { exit 22 }
     $serviceExe = if ($Matches[1]) { $Matches[1] } else { $Matches[2] }
     if ($serviceExe -ine $standardExe) { exit 22 }
