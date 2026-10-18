@@ -31,7 +31,14 @@ function Run-Setup([string]$LogName, [string[]]$Extra) {
 }
 function Remove-GameLink([string]$LogName) {
     Run-Checked (Join-Path $target 'unins000.exe') @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$logs/$LogName.log`"")
-    if (Test-Path (Join-Path $target 'GameLink.exe')) { throw 'GameLink EXE remained after uninstall' }
+    $uninstallLog = Join-Path $logs "$LogName.log"
+    $finished = $false
+    for ($attempt = 0; $attempt -lt 150 -and -not $finished; $attempt++) {
+        try { $finished = Select-String -LiteralPath $uninstallLog -Pattern 'Uninstallation process succeeded' -SimpleMatch -Quiet }
+        catch { $finished = $false }
+        if (-not $finished) { Start-Sleep -Milliseconds 200 }
+    }
+    if (-not $finished -or (Test-Path (Join-Path $target 'GameLink.exe'))) { throw 'GameLink uninstall did not finish successfully' }
 }
 $installedZeroTier = $false
 try {
@@ -83,7 +90,9 @@ try {
     if ((Get-Service $serviceName).Status -ne 'Running' -or (Get-FileHash $identityPath -Algorithm SHA256).Hash -ne $identityHash) { throw 'GameLink uninstall affected ZeroTier' }
     Write-Host 'PASS: one-click EXE opt-out, default real MSI installation, running service/API, bundled GUI startup, idempotent reinstall and independent uninstall.'
 } finally {
-    if (Test-Path (Join-Path $target 'unins000.exe')) { Remove-GameLink 'cleanup-gamelink' }
+    # Inno's original unins000.exe may still await asynchronous self-deletion.
+    # Only uninstall again when the actual application remains installed.
+    if (Test-Path (Join-Path $target 'GameLink.exe')) { Remove-GameLink 'cleanup-gamelink' }
     if ($installedZeroTier -or (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
         Run-Checked "$env:SystemRoot/System32/msiexec.exe" @('/x', "`"$msi`"", '/qn', '/norestart', 'REBOOT=ReallySuppress')
         if (Get-Service $serviceName -ErrorAction SilentlyContinue) { throw 'ZeroTier service remained after explicit MSI cleanup' }

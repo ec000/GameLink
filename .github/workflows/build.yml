@@ -49,8 +49,14 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Select Python for Qt packaging
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.14'
+      # Use the pinned JS entry directly: some runner post-job evaluators do
+      # not yet accept the composite wrapper's new $/action self-reference.
       - name: Install Qt 6.8.3 MSVC SDK
-        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
+        uses: jurplel/install-qt-action/action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4
         with:
           version: '6.8.3'
           arch: win64_msvc2022_64
@@ -61,7 +67,7 @@ jobs:
           $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
           if (-not (Test-Path $compiler)) { throw 'Inno Setup 6 compiler missing' }
           ./scripts/build-windows.ps1 -QtPrefix $env:QT_ROOT_DIR -InnoCompiler $compiler
-      - name: Exercise bundled installer on disposable Windows runner
+      - name: Exercise one-click installer on disposable Windows runner
         shell: pwsh
         run: ./scripts/test-windows-installer.ps1
       - name: Upload one-click EXE installer
