@@ -29,12 +29,16 @@ function Check-Hash([string]$Path, [string]$Hash) {
 function Stop-ZeroTier {
     $s = Get-Service $serviceName
     if ($s.Status -ne 'Stopped') {
-        Stop-Service $serviceName
-        (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+        $stopFailure = $null
+        try { Stop-Service $serviceName -ErrorAction Stop } catch { $stopFailure = $_ }
+        # ZeroTier can close the SCM control pipe while exiting (Win32 109).
+        # Accept this only when SCM actually confirms Stopped within the bound.
+        try { (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30)) }
+        catch { if ($stopFailure) { throw $stopFailure }; throw }
     }
 }
 function Start-ZeroTier {
-    Start-Service $serviceName
+    if ((Get-Service $serviceName).Status -ne 'Running') { Start-Service $serviceName }
     (Get-Service $serviceName).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
 }
 try {

@@ -23,7 +23,8 @@ Invoke-Helper (Join-Path $tamper 'apply-zerotier-roots.ps1') 31
 Remove-Item $tamper -Recurse -Force
 # Fail after the planet has been replaced: a file blocks the moons.d directory.
 # The original planet from installation is used to prove rollback byte-for-byte.
-Stop-Service ZeroTierOneService
+$stop = Start-Process "$env:SystemRoot/System32/sc.exe" -ArgumentList @('stop', 'ZeroTierOneService') -Wait -PassThru -NoNewWindow
+if ($stop.ExitCode -notin @(0, 109)) { throw "Cannot stop fixture service: $($stop.ExitCode)" }
 (Get-Service ZeroTierOneService).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
 $moons = Join-Path $DataDirectory 'moons.d'
 $savedMoons = Join-Path $DataDirectory 'moons-ci-save'

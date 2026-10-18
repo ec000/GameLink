@@ -45,6 +45,12 @@ begin
               21: Result := '内置根节点元数据无效，请重新获取安装包。';
               22: Result := 'ZeroTier 标准服务/数据目录未就绪或处于切换状态，请修复服务后重试。';
               24: Result := '根节点配置失败且自动恢复未完成。请检查服务与 ProgramData\ZeroTier\One\gamelink-root-backups 中的备份。';
+              31: Result := '无法读取或校验内置根节点文件。请检查系统策略与 ProgramData\ZeroTier\One 下的 gamelink-roots-error 日志。';
+              32: Result := '无法检查 ZeroTier 服务或数据目录，请检查权限和服务安装。';
+              33: Result := '无法备份已有根节点文件，未继续替换。请检查数据目录权限和磁盘空间。';
+              34: Result := 'ZeroTier 服务未能在限定时间内停止，已停止根节点配置并尝试恢复服务。';
+              35: Result := '写入根节点失败，已尝试恢复原配置。请检查数据目录权限和占用。';
+              36: Result := '应用根节点后服务启动失败，已尝试恢复原配置。请检查服务及备份。';
             else Result := '自建根节点配置失败；如已修改文件，已尝试恢复原配置。错误码：' + IntToStr(ExitCode);
             end;
             Exit;
