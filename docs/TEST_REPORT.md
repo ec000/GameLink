@@ -186,3 +186,14 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 最终文件：build/artifacts/windows-0.6.0-custom-roots/GameLink-0.6.0-CustomRoots-Offline-Personal-Setup.exe，49,536,526 字节，SHA-256 09a61fcc4f26a262d435fcf6a1c0aed470ad360dcd77a1476316f89d86a4e92b。AES-GCM 认证解密、本机与 Windows 原始文件大小/哈希一致，目录 0700、文件 0600。两项临时 Secret 和密文 artifact 已删除并复查数量为零，本机临时密钥、输入捆绑和下载密文也已清理；未公开上传个人 EXE、原始 MSI 或根节点二进制。
 
 边界：新加入/退网测试使用回环模拟服务，没有加入或离开用户真实网络。实际安装测试确认本地服务与 Moon 加载，但在线采样为 false，未验证自建根节点可达性、真实授权/IP、P2P、NAT 和游戏联机。API Token 仍需按用户账户权限配置；不能把网络 join 的 HTTP 接受、节点在线或测试截图视为游戏连通证明。标准用户/跨账号 UAC、策略/重启等矩阵仍需实机验收。个人安装器尚未签名。
+
+
+## 客户端版本显示 0.6.1（2026-10-19）
+
+窗口标题、侧栏和“设置 → 关于 GameLink”明确显示 GameLink 客户端 v0.6.1，统一来自 CMake 项目版本设置的 applicationVersion；ZeroTier 独立服务版本继续由状态 API 显示。现有启动自检增加标题/侧栏/关于页的版本一致性检查。本机 Qt 6.11.2 编译、启动自检与六页大小窗口布局检查通过，命令行 --version 输出 GameLink 0.6.1。
+
+[Windows/Linux 构建](https://github.com/ec000/GameLink/actions/runs/39261823373) 全部通过，应用提交 edc2e6550a3a272714e1a6f867524af97f45a6b1；Windows 原生 Qt 6.8.3 编译、CTest 3/3、独立部署启动、真实安装器生命周期检查和截图检查通过。[个人离线打包](https://github.com/ec000/GameLink/actions/runs/39262489588) 使用 70be1c2 固定的已验证 0.6.1 ZIP，完成内置 MSI 安装、Moon 加载、根节点备份恢复、重复安装与卸载保留、安装后的版本显示自检。
+
+个人包继续包含原版 ZeroTier 1.16.2 MSI 和原有 planet/moon。文件 build/artifacts/windows-0.6.1-custom-roots/GameLink-0.6.1-CustomRoots-Offline-Personal-Setup.exe，49,540,172 字节，SHA-256 ee29fba894bb04233cc9525b725d6f6f5ab88da4a9afd26385c44a06f2535896；本机认证解密后的大小/哈希与 Windows 原始文件一致。目录 0700、文件 0600。临时远端 Secret 与密文 artifact 已删除且复查为零，本机临时输入、密钥和密文已清理；未公开上传个人 EXE/MSI/根节点二进制。基线 ZIP CRC 校验通过，无 MSI，SHA-256 3684c38a11e0dcd1a68f7ecc33502c1bb390e15943665f4793a802e8c3f16eb6。
+
+本次仅调整客户端版本显示，真实网络、授权和游戏验收边界沿用 0.6.0；没有操作用户电脑上的 ZeroTier 网络。
