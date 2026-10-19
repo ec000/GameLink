@@ -24,10 +24,10 @@
 
 当前可用流程：安装并配置根节点 → 配置受保护的本地 API Token → 在 GameLink 填 Network ID 并连接，或配置 GameLink 服务端/用户凭据后使用房间。私有网络仍需控制器授权。
 
-后续减少步骤的方向：提供 Network ID、GameLink HTTPS 服务地址和用户注册/登录方案；通过有效邀请绑定本机 Node ID，在控制器授权成功后由明确的“加入房间并连接”操作发起入网，并显示“等待授权/等待 IP/已连接”。服务端控制器密钥不能下发到安装包；本地 Token 的普通用户访问需要专门的受限提权设计，不能将机器级凭据开放给 Everyone。当前 GUI 基线未改变，以上自动入网流程尚未实现。
+后续减少步骤的方向：提供 Network ID、GameLink HTTPS 服务地址和用户注册/登录方案；通过有效邀请绑定本机 Node ID，在控制器授权成功后由明确的“加入房间并连接”操作发起入网，并显示“等待授权/等待 IP/已连接”。服务端控制器密钥不能下发到安装包；本地 Token 的普通用户访问需要专门的受限提权设计，不能将机器级凭据开放给 Everyone。0.6 已提供独立 ZeroTier 状态页和显式加入/退网操作；上述邀请绑定与自动入网流程尚未实现。
 
 ## 构建
 
-`scripts/package-personal-offline.ps1` 增加 `-CustomRootsDirectory`，目录内必须包含 `planet` 和以 World ID 命名的一个 `.moon`。输出 `GameLink-0.5.0-CustomRoots-Offline-Personal-Setup.exe`。普通个人包和默认公有在线包不携带这些根节点。
+`scripts/package-personal-offline.ps1` 增加 `-CustomRootsDirectory`，目录内必须包含 `planet` 和以 World ID 命名的一个 `.moon`。输出 `GameLink-0.6.0-CustomRoots-Offline-Personal-Setup.exe`。普通个人包和默认公有在线包不携带这些根节点。
 
 私有工作流以 `custom_roots=true` 启动，临时 `GAMELINK_CUSTOM_ROOTS` Secret 为仅含 `planet`、`moon` 两个 Base64 字段的 JSON；构建后删除该 Secret 和一次性传输密钥、密文产物。

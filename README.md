@@ -10,7 +10,7 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 ## 一键安装包（0.5 新增）
 
-`GameLink-0.5.0-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
+`GameLink-0.6.0-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
 
 安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用 ZeroTier 状态页的明确卸载操作。本次下载的原版 MSI 缓存到应用目录，供后续修复；跳过下载时不创建缓存。
 
@@ -65,7 +65,7 @@ API 诊断区显示凭证文件缺失/不可读/无效、非法端口、连接�
 | Warcraft III / DST / Overcooked! 2 | 配置均 unverified；Overcooked 只观察，不能替换 Steam P2P/SDR |
 | Strict Direct / WFP / broker | 未实现，GUI/API 拒绝严格模式，不能保证不经 relay |
 | 自动游戏扫描 / LAN 广播验证 / 自启动 | 未实现 |
-| Windows 安装包 | 0.5 EXE 可一键从官方源下载安装 ZeroTier；默认 EXE/ZIP 不内置 MSI，尚未代码签名 |
+| Windows 安装包 | 0.6 EXE 可一键从官方源下载安装 ZeroTier；默认 EXE/ZIP 不内置 MSI，尚未代码签名 |
 
 ## 快速验证：不需要 Qt 或 ZeroTier
 
