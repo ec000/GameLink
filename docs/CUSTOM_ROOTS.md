@@ -28,6 +28,6 @@
 
 ## 构建
 
-`scripts/package-personal-offline.ps1` 增加 `-CustomRootsDirectory`，目录内必须包含 `planet` 和以 World ID 命名的一个 `.moon`。输出 `GameLink-0.6.0-CustomRoots-Offline-Personal-Setup.exe`。普通个人包和默认公有在线包不携带这些根节点。
+`scripts/package-personal-offline.ps1` 增加 `-CustomRootsDirectory`，目录内必须包含 `planet` 和以 World ID 命名的一个 `.moon`。输出 `GameLink-0.6.1-CustomRoots-Offline-Personal-Setup.exe`。普通个人包和默认公有在线包不携带这些根节点。
 
 私有工作流以 `custom_roots=true` 启动，临时 `GAMELINK_CUSTOM_ROOTS` Secret 为仅含 `planet`、`moon` 两个 Base64 字段的 JSON；构建后删除该 Secret 和一次性传输密钥、密文产物。

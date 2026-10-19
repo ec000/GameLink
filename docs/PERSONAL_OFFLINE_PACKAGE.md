@@ -8,9 +8,9 @@
 
 内嵌 MSI SHA-256：`42514072b0fe44b8f66e0395bcd23a0b1d1642c28ed00831f1527b2f41b14670`。
 
-客户端复用 deploy/personal-offline-base.json 中固定版本、来源运行编号及 SHA-256 的已验证 Windows Qt ZIP。当前基线为 0.6.0 / Qt 6.8.3，应用提交 732fd835d467b02a749ec69d3b53938bbeb24f39，包含独立 ZeroTier 状态页和加入/退网功能。个人打包仅复用该已验证应用，不重新混入其他客户端代码。
+客户端复用 deploy/personal-offline-base.json 中固定版本、来源运行编号及 SHA-256 的已验证 Windows Qt ZIP。当前基线为 0.6.1 / Qt 6.8.3，应用提交 edc2e6550a3a272714e1a6f867524af97f45a6b1，包含独立 ZeroTier 状态页和加入/退网功能。个人打包仅复用该已验证应用，不重新混入其他客户端代码。
 
-个人包文件名为 `GameLink-0.6.0-Offline-Personal-Setup.exe`；带自建根节点的定制版为 `GameLink-0.6.0-CustomRoots-Offline-Personal-Setup.exe`，额外包含用户提供的 planet/moon，并通过独立安装任务校验、备份后部署，详见 [自建根节点说明](CUSTOM_ROOTS.md)。Windows 程序与安装器尚未签名。
+个人包文件名为 `GameLink-0.6.1-Offline-Personal-Setup.exe`；带自建根节点的定制版为 `GameLink-0.6.1-CustomRoots-Offline-Personal-Setup.exe`，额外包含用户提供的 planet/moon，并通过独立安装任务校验、备份后部署，详见 [自建根节点说明](CUSTOM_ROOTS.md)。Windows 程序与安装器尚未签名。
 
 ## 私有产物传输
 
