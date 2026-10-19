@@ -76,3 +76,7 @@ GameLink 不主动删除 identity、网络或根配置。**官方卸载器可能
 测试不会安装/卸载真实 ZeroTier。Windows 原生 API 已在 MSVC 2022 / Qt 6.8.3 编译并通过完整回归；[CI 39026632529](https://github.com/ec000/GameLink/actions/runs/39026632529) 额外下载固定 SHA-256 的官方 1.16.2 MSI，通过只读签名/发布者/产品识别，未安装或执行它，亦未把它随包分发。0.4.0 Windows ZIP 已生成，并在清除 Qt SDK 环境后通过程序启动/TLS 检查。
 
 本机完整 CTest 3/3 通过，客户端 18 项通过、1 项仅 Windows 的官方 MSI 检查跳过；Windows 客户端共 19 项通过。实际 UAC、服务/驱动安装、升级、卸载、数据保留及重启矩阵仍需在隔离 Windows 实机/虚拟机确认。最初网络/审批超时已恢复，不能把源码或 mock 通过解释为真实安装流程已经验收。
+
+## 0.6.2 本机凭据检测
+
+安装器继续不复制或生成 API Token。GameLink 首次运行或旧默认占位文件缺失时，兼容读取官方用户目录下的新版 `ZeroTier/One/authtoken.secret` 和旧版 `ZeroTier/authtoken.secret`，只在当前用户已有权限时读取，并通过本机 API 验证后保存路径；不需要为此再次 join。手动配置的其他路径保留，状态页提供主动检测和文件选择。没有可读副本时，先启动官方 ZeroTier One 托盘程序并完成其权限提示，再检测。详见 [状态页排查](ZEROTIER_STATUS.md#本地-api-凭据与刷新排查062)。

@@ -197,3 +197,16 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 个人包继续包含原版 ZeroTier 1.16.2 MSI 和原有 planet/moon。文件 build/artifacts/windows-0.6.1-custom-roots/GameLink-0.6.1-CustomRoots-Offline-Personal-Setup.exe，49,540,172 字节，SHA-256 ee29fba894bb04233cc9525b725d6f6f5ab88da4a9afd26385c44a06f2535896；本机认证解密后的大小/哈希与 Windows 原始文件一致。目录 0700、文件 0600。临时远端 Secret 与密文 artifact 已删除且复查为零，本机临时输入、密钥和密文已清理；未公开上传个人 EXE/MSI/根节点二进制。基线 ZIP CRC 校验通过，无 MSI，SHA-256 3684c38a11e0dcd1a68f7ecc33502c1bb390e15943665f4793a802e8c3f16eb6。
 
 本次仅调整客户端版本显示，真实网络、授权和游戏验收边界沿用 0.6.0；没有操作用户电脑上的 ZeroTier 网络。
+
+
+## 本机凭据与状态刷新修复 0.6.2（2026-10-19）
+
+针对服务 Running、控制器显示节点在线，但 GameLink 报 TOKEN_MISSING 且网络列表为空的情况，修复只配置旧 GameLink 占位文件、没有发现官方用户副本的问题。兼容 Windows 新版和旧版 authtoken.secret 路径，当前配置优先；缺失默认占位路径自动迁移，其他自定义路径保留。显式检测通过回环 GET /status 验证，401/403 的旧副本会跳过，成功后只保存路径；新增文件选择和页面顶部解释，不复制凭据或自动提权。
+
+本机 macOS / Qt 6.11.2 编译与 CTest 3/3 通过，Qt 21 项通过、1 项 Windows 专属检查跳过。新增回环集成测试覆盖新目录凭据失效而旧目录有效、恢复读取已有网络名称/状态/IP、自定义缺失路径不被启动覆盖、显式检测失败不保存、成功后恢复、节点 online=false 不误报在线，以及日志/设置不含凭据内容。检测只执行 GET，没有操作用户真实网络。
+
+[Windows/Linux CI 39266729721](https://github.com/ec000/GameLink/actions/runs/39266729721) 全部通过，应用提交 358e12014d9e76e2050ff0eb4880857a03d91333。Windows MSVC 2022 / Qt 6.8.3 编译、CTest 3/3、六页导航/大小窗口布局、独立部署与实际在线安装器生命周期验证通过；人工检查 Windows 状态页预览。已下载 ZIP 全量 CRC 校验，未包含 MSI，SHA-256 为 61871335bbdff779e0cd8a412964fc8804223c585ac47c08833e7a6e04fefe96。
+
+[个人离线包 CI 39267399164](https://github.com/ec000/GameLink/actions/runs/39267399164) 使用 110d925 固定的 0.6.2 基线，继续内置原版 ZeroTier 1.16.2 MSI 和用户原有 Moon/Planet。通过真实 MSI 安装、Moon API 加载、哈希/备份恢复、损坏/部分写入拒绝、重复安装/停止状态保留和独立卸载检查。本次节点 online=false 仅为 CI 样本；没有 join 用户真实网络，真实电脑授权/IP/P2P/游戏仍需实机验收。
+
+最终文件 build/artifacts/windows-0.6.2-custom-roots/GameLink-0.6.2-CustomRoots-Offline-Personal-Setup.exe，49,540,361 字节，SHA-256 c391edd77446d20b1303dedc76419dd46d46e254712b47a8513739dca20a1793。本机 AES-GCM 认证解密后与 Windows 原始大小/哈希一致，目录 0700、文件 0600。两项临时 GitHub Secret、远端密文 artifact 均删除并复查为空；本机临时密钥、根输入捆绑和密文也已清理。未公开上传个人 EXE、MSI 或自建根二进制。
