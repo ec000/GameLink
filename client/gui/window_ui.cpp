@@ -12,6 +12,7 @@
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QIcon>
 #include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
@@ -90,6 +91,8 @@ QIcon navigationIcon(int kind, const QColor& color) {
 }
 
 void Window::buildUi(){
+ Q_INIT_RESOURCE(gamelink_assets);
+ setWindowIcon(QIcon(S(":/gamelink/gamelink.png")));
  setWindowTitle(S("GameLink v%1 · 游戏联机").arg(QCoreApplication::applicationVersion()));resize(1180,840);setMinimumSize(960,680);
  auto font = QApplication::font();
 #ifdef Q_OS_WIN
@@ -104,7 +107,7 @@ void Window::buildUi(){
  QWidget#sidebar { background:#eef1f8; border-right:1px solid #e0e5ef; }
  QLabel { background:transparent; border:0; }
  QLabel[role="brand"] { font-size:24px; font-weight:700; color:#243558; }
- QLabel#brandMark { background:#3864e8; color:white; border-radius:13px; font-size:24px; font-weight:700; }
+ QLabel#brandMark { background:transparent; }
  QLabel[role="eyebrow"] { font-size:11px; color:#6a7a94; font-weight:600; }
  QLabel[role="pageTitle"] { font-size:28px; font-weight:700; color:#17233b; }
  QLabel[role="cardTitle"] { font-size:16px; font-weight:600; color:#25334c; }
@@ -156,7 +159,8 @@ void Window::buildUi(){
  auto* sidebar=new QWidget;sidebar->setObjectName(S("sidebar"));sidebar->setFixedWidth(214);root->addWidget(sidebar);
  auto* side=new QVBoxLayout(sidebar);side->setContentsMargins(18,28,18,22);side->setSpacing(8);
  auto* brand=new QHBoxLayout;brand->setSpacing(10);
- auto* mark=text(S("G"));mark->setObjectName(S("brandMark"));mark->setFixedSize(42,42);mark->setAlignment(Qt::AlignCenter);
+ auto* mark=text({});mark->setObjectName(S("brandMark"));mark->setFixedSize(42,42);mark->setAlignment(Qt::AlignCenter);
+ mark->setPixmap(windowIcon().pixmap(QSize(42,42),devicePixelRatioF()));
  brand->addWidget(mark);brand->addWidget(text(S("GameLink"),"brand"));side->addLayout(brand);
  side->addWidget(text(S("让联机回到一起"),"muted"));side->addSpacing(30);
  side->addWidget(text(S("工作空间 / WORKSPACE"),"eyebrow"));side->addSpacing(6);

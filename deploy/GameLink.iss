@@ -1,6 +1,6 @@
 ﻿; Per-user GameLink setup. Only the independent MSI prerequisite requests UAC.
 #ifndef MyAppVersion
-  #define MyAppVersion "0.6.2"
+  #define MyAppVersion "0.6.3"
 #endif
 #ifndef StageDir
   #define StageDir "..\build\stage"
@@ -26,6 +26,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 MinVersion=10.0.17763
 WizardStyle=modern
+SetupIconFile=..\assets\icons\gamelink.ico
 LicenseFile={#InstallerLicenseFile}
 OutputDir=..\build\installer
 #if defined(PersonalUseOnly) && defined(CustomZeroTierRoots)

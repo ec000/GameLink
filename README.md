@@ -12,9 +12,13 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 0.6.2 修复首次凭据配置：兼容官方 Windows 新版 `ZeroTier/One/authtoken.secret` 与旧版 `ZeroTier/authtoken.secret`，验证本机 API 成功后保存路径。新增“检测本机凭据”和文件选择；明确区分 GameLink 无法读取 API 与 ZeroTier 节点离线。已有自定义路径保留，只有缺失的旧默认占位路径自动迁移。详见 [凭据与刷新排查](docs/ZEROTIER_STATUS.md#本地-api-凭据与刷新排查062)。
 
+## 应用图标（0.6.3）
+
+统一使用蓝色圆角白色 G 标识：Windows EXE/任务栏/开始菜单快捷方式、安装器、卸载列表及界面侧栏。ICO 包含 16、20、24、32、40、48、64、128、256 像素帧，支持透明背景；Qt 图标资源内嵌，不依赖外部文件。矢量源在 `assets/icons/gamelink.svg`，PNG/ICO 已提交，正常构建无需额外图形依赖。需要修改图稿时，在具备 Sharp 的 Node 环境运行 `node scripts/generate-app-icon.mjs`，也可用 `GAMELINK_SHARP_PATH` 指定 Sharp 模块位置。
+
 ## 一键安装包（0.5 新增）
 
-`GameLink-0.6.2-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
+`GameLink-0.6.3-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
 
 安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用 ZeroTier 状态页的明确卸载操作。本次下载的原版 MSI 缓存到应用目录，供后续修复；跳过下载时不创建缓存。
 

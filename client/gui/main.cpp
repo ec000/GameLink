@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     parser.addOption(selfTest);
     parser.process(app);
     Window window;
+    app.setWindowIcon(window.windowIcon());
     if (parser.isSet(selfTest)) {
         QTimer::singleShot(0, &app, [&] {
             const auto* games = window.findChild<QComboBox*>(QStringLiteral("gameSelector"));
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
             const auto expectedVersion = QStringLiteral("GameLink 客户端 v")+QCoreApplication::applicationVersion();
             const bool versionReady = sidebarVersion && aboutVersion && sidebarVersion->text() == expectedVersion &&
                 aboutVersion->text() == expectedVersion && window.windowTitle().contains(QStringLiteral("v")+QCoreApplication::applicationVersion());
-            app.exit(versionReady && networkReady && bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == Window::PageCount && QSslSocket::supportsSsl() ? 0 : 1);
+            app.exit(!window.windowIcon().isNull() && versionReady && networkReady && bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == Window::PageCount && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();
