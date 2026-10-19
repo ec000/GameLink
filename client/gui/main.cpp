@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QFileInfo>
 #include <QPushButton>
+#include <QTableWidget>
 #include <QSslSocket>
 
 int main(int argc, char** argv) {
@@ -41,7 +42,9 @@ int main(int argc, char** argv) {
                 bundledReady = path && QFileInfo(path->text()).canonicalFilePath() == QFileInfo(bundled).canonicalFilePath();
             }
 #endif
-            app.exit(bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == 5 && QSslSocket::supportsSsl() ? 0 : 1);
+            const bool networkReady = window.findChild<QTableWidget*>(QStringLiteral("ztNetworksTable")) &&
+                window.findChild<QPushButton*>(QStringLiteral("ztJoinButton")) && window.findChild<QPushButton*>(QStringLiteral("ztLeaveButton"));
+            app.exit(networkReady && bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == Window::PageCount && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();

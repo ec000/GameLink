@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QPushButton>
 #include <QSettings>
 #include <QTableWidget>
@@ -117,14 +118,14 @@ private slots:
     void sidebarNavigationAndSmallWindowRemainUsable() {
         Window window([] { return gamelink::EnvironmentReport{}; });
         auto* stack = window.findChild<QStackedWidget*>(S("pageStack")); QVERIFY(stack);
-        QCOMPARE(stack->count(), 5);
+        QCOMPARE(stack->count(), int(Window::PageCount));
         window.setWindowTitle(S("GameLink · UI preview / MOCK environment"));
         window.show(); QCoreApplication::processEvents();
         // Catch a fontless platform backend before accepting square-glyph previews.
         const QFontMetrics fontMetrics(window.font());
         QVERIFY(fontMetrics.inFontUcs4(U'G'));
         QVERIFY(fontMetrics.inFontUcs4(U'联'));
-        const QStringList snapshots = {S("overview"), S("games"), S("room"), S("diagnostics"), S("settings")};
+        const QStringList snapshots = {S("overview"), S("games"), S("room"), S("zerotier"), S("diagnostics"), S("settings")};
         for (int i = 0; i < stack->count(); ++i) {
             auto* navigation = window.findChild<QPushButton*>(S("navigation%1").arg(i)); QVERIFY(navigation);
             QTest::mouseClick(navigation, Qt::LeftButton);
@@ -229,7 +230,7 @@ private slots:
         using namespace gamelink;
         auto platform=std::make_shared<MockInstallerPlatform>();
         Window window([]{ return EnvironmentReport{}; },platform); window.show();
-        auto* stack=window.findChild<QStackedWidget*>(S("pageStack")); QVERIFY(stack); stack->setCurrentIndex(4);
+        auto* stack=window.findChild<QStackedWidget*>(S("pageStack")); QVERIFY(stack); stack->setCurrentIndex(Window::ZeroTierPage);
         auto* uninstall=window.findChild<QPushButton*>(S("ztUninstallButton")); QVERIFY(uninstall); QVERIFY(uninstall->isEnabled());
         auto* install=window.findChild<QPushButton*>(S("ztInstallButton")); QVERIFY(install); QVERIFY(!install->isEnabled());
         auto* choose=window.findChild<QPushButton*>(S("ztChooseMsiButton")); QVERIFY(choose); QVERIFY(choose->isEnabled());
@@ -498,6 +499,73 @@ private slots:
         QVERIFY(window.grab().save(QCoreApplication::applicationDirPath() + S("/zerotier-detection-fixture.png")));
     }
 
+    void zeroTierPageJoinStatusAndTargetedLeave() {
+        HttpFixture fixture; QVERIFY(fixture.listen());
+        QTemporaryFile tokenFile(settingsDirectory.path()+S("/token-XXXXXX"));
+        QVERIFY(tokenFile.open()); tokenFile.write(localToken); tokenFile.flush();
+        const QString a=S("abcdef1234000001"), b=S("abcdef1234000002");
+        QSettings settings; settings.setValue(S("ztPort"),QString::number(fixture.server.serverPort()));
+        settings.setValue(S("ztTokenFile"),tokenFile.fileName()); settings.setValue(S("network"),a); settings.sync();
+        bool joined=false, otherJoined=true, assigned=false, reject=false, failLeave=true;
+        QString status=S("ACCESS_DENIED"); QPointer<QTcpSocket> pendingJoin;
+        fixture.handler=[&](const Request& request,QTcpSocket* socket){
+            QCOMPARE(request.headers.value("x-zt1-auth"),localToken);
+            QVERIFY(!request.path.startsWith("/api/"));
+            if(reject){HttpFixture::reply(socket,"{}",401);return;}
+            if(request.path=="/peer")HttpFixture::reply(socket,"[]");
+            else if(request.path=="/status")HttpFixture::reply(socket,R"({"address":"aaaaaaaaaa","online":true,"clock":100000,"version":"1.fixture"})");
+            else if(request.path=="/network"){
+                QJsonArray list;
+                if(otherJoined)list.append(QJsonObject{{S("id"),b},{S("name"),S("Other network")},{S("status"),S("OK")},{S("assignedAddresses"),QJsonArray{S("10.99.0.2/24")}}});
+                if(joined)list.append(QJsonObject{{S("id"),a},{S("name"),S("GameLink MOCK")},{S("status"),status},{S("assignedAddresses"),assigned?QJsonArray{S("10.77.0.1/24")}:QJsonArray{}}});
+                HttpFixture::reply(socket,QJsonDocument(list).toJson(QJsonDocument::Compact));
+            }else if(request.path=="/network/abcdef1234000001" && request.method=="POST"){
+                auto config=QJsonDocument::fromJson(request.body).object();
+                QVERIFY(config[S("allowManaged")].toBool());
+                QVERIFY(!config[S("allowDefault")].toBool(true));QVERIFY(!config[S("allowGlobal")].toBool(true));QVERIFY(!config[S("allowDNS")].toBool(true));
+                joined=true;pendingJoin=socket; // Keep mutation pending to exercise duplicate-operation guards.
+            }else if(request.path=="/network/abcdef1234000002" && request.method=="DELETE"){
+                if(failLeave)HttpFixture::reply(socket,"private fixture failure",500);
+                else{otherJoined=false;HttpFixture::reply(socket,{},204);}
+            }else HttpFixture::reply(socket,"{}",404);
+        };
+        auto platform=std::make_shared<MockInstallerPlatform>();
+        Window window([]{return gamelink::EnvironmentReport{};},platform);
+        auto* stack=window.findChild<QStackedWidget*>(S("pageStack"));stack->setCurrentIndex(Window::ZeroTierPage);
+        auto* join=window.findChild<QPushButton*>(S("ztJoinButton"));QVERIFY(join);
+        auto* leave=window.findChild<QPushButton*>(S("ztLeaveButton"));QVERIFY(leave);
+        auto* refresh=window.findChild<QPushButton*>(S("ztRefreshButton"));QVERIFY(refresh);
+        auto* table=window.findChild<QTableWidget*>(S("ztNetworksTable"));QVERIFY(table);
+        auto* state=window.findChild<QLabel*>(S("ztNetworkStatus"));QVERIFY(state);
+        auto* result=window.findChild<QLabel*>(S("ztOperationStatus"));QVERIFY(result);
+        QTRY_COMPARE_WITH_TIMEOUT(table->rowCount(),1,4000);QTRY_VERIFY_WITH_TIMEOUT(join->isEnabled(),4000);
+        QCOMPARE(state->text(),S("未加入"));
+        join->click();QTRY_VERIFY_WITH_TIMEOUT(!pendingJoin.isNull(),4000);
+        QVERIFY(!join->isEnabled());QVERIFY(!leave->isEnabled());
+        QVERIFY(!window.findChild<QPushButton*>(S("ztUninstallButton"))->isEnabled());
+        join->click();int postCount=0;for(const auto& r:fixture.requests)if(r.method=="POST")++postCount;QCOMPARE(postCount,1);
+        HttpFixture::reply(pendingJoin,"{}");pendingJoin=nullptr;
+        QTRY_COMPARE_WITH_TIMEOUT(state->text(),S("等待授权"),5000);
+        status=S("REQUESTING_CONFIGURATION");refresh->click();QTRY_COMPARE_WITH_TIMEOUT(state->text(),S("等待配置"),5000);
+        status=S("OK");refresh->click();QTRY_COMPARE_WITH_TIMEOUT(state->text(),S("等待分配 IP"),5000);
+        assigned=true;refresh->click();QTRY_COMPARE_WITH_TIMEOUT(state->text(),S("已连接"),5000);
+        window.setWindowTitle(S("GameLink · MOCK ZeroTier status / no real network"));window.show();QCoreApplication::processEvents();
+        QVERIFY(window.grab().save(QCoreApplication::applicationDirPath()+S("/zerotier-status-fixture.png")));
+        auto selectB=[&]{for(int i=0;i<table->rowCount();++i)if(table->item(i,0)->text()==b){table->selectRow(i);return true;}return false;};
+        QVERIFY(selectB());QVERIFY(leave->isEnabled());
+        auto answer=[](QMessageBox::StandardButton button){QTimer::singleShot(0,[button]{auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget());QVERIFY(box);box->button(button)->click();});};
+        answer(QMessageBox::No);leave->click();for(const auto& r:fixture.requests)QVERIFY(r.method!="DELETE");
+        answer(QMessageBox::Yes);leave->click();QTRY_VERIFY_WITH_TIMEOUT(result->text().contains(S("离开网络失败")),5000);
+        QTRY_VERIFY_WITH_TIMEOUT(leave->isEnabled(),5000);QCOMPARE(table->rowCount(),2);QVERIFY(otherJoined);QVERIFY(joined);
+        failLeave=false;answer(QMessageBox::Yes);leave->click();QTRY_COMPARE_WITH_TIMEOUT(table->rowCount(),1,5000);
+        QCOMPARE(table->item(0,0)->text(),a);QVERIFY(joined);QVERIFY(!otherJoined);
+        for(const auto& r:fixture.requests)if(r.method=="DELETE")QCOMPARE(r.path,QByteArray("/network/abcdef1234000002"));
+        reject=true;refresh->click();QTRY_VERIFY_WITH_TIMEOUT(window.findChild<QLabel*>(S("localApiStatus"))->text().contains(S("[AUTH_FAILED]")),5000);
+        QVERIFY(!leave->isEnabled());QVERIFY(!join->isEnabled());QVERIFY(table->item(0,2)->text().contains(S("状态过期")));
+        auto* log=window.findChild<QPlainTextEdit*>(S("events"));QVERIFY(!log->toPlainText().contains(QString::fromUtf8(localToken)));
+        QVERIFY(!log->toPlainText().contains(S("private fixture failure")));QCOMPARE(platform->calls,0);
+    }
+
     void guiRoomJoinPathChangesAndLeave() {
         HttpFixture fixture; QVERIFY(fixture.listen());
         QTemporaryFile tokenFile(settingsDirectory.path() + S("/token-XXXXXX"));
@@ -547,7 +615,7 @@ private slots:
         policy->setCurrentIndex(0); create->click();
         auto* table = window.findChild<QTableWidget*>(S("peersTable")); QVERIFY(table);
         QTRY_COMPARE_WITH_TIMEOUT(table->rowCount(), 2, 5000);
-        auto* join = window.findChild<QPushButton*>(S("joinNetworkButton")); QVERIFY(join); join->click();
+        auto* join = window.findChild<QPushButton*>(S("joinNetworkButton")); QVERIFY(join); QTRY_VERIFY_WITH_TIMEOUT(join->isEnabled(),5000); join->click();
         QTRY_VERIFY_WITH_TIMEOUT(joined, 5000);
         auto hasState = [table](const QString& state) {
             for (int row = 0; row < table->rowCount(); ++row)

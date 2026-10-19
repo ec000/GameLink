@@ -10,14 +10,14 @@
 #include <QPushButton>
 #define S(x) QStringLiteral(x)
 void Window::updateInstallerButtons() {
- const bool enabled=installerInventory.supported && installerInventory.error.isEmpty() && !installer.busy();
- chooseInstaller->setEnabled(enabled);refreshProducts->setEnabled(!installer.busy());
+ const bool enabled=installerInventory.supported && installerInventory.error.isEmpty() && !installer.busy() && !networkMutationBusy;
+ chooseInstaller->setEnabled(enabled);refreshProducts->setEnabled(!installer.busy() && !networkMutationBusy);
  installZeroTier->setEnabled(enabled && !installerPath->text().isEmpty());
  uninstallZeroTier->setEnabled(enabled && installedProducts->currentIndex()>=0);
  installedProducts->setEnabled(enabled && installedProducts->count()>0);
 }
 void Window::refreshInstaller() {
- if(installer.busy())return;
+ if(installer.busy() || networkMutationBusy)return;
  const auto selected=installedProducts->currentData().toString();
  installerInventory=installer.inventory();installedProducts->clear();
  for(const auto& product:installerInventory.products)installedProducts->addItem(product.name+S(" · ")+product.version,product.code);
@@ -47,7 +47,7 @@ void Window::selectInstaller() {
  updateInstallerButtons();
 }
 void Window::installService() {
- if(installer.busy())return;
+ if(installer.busy() || networkMutationBusy)return;
  const auto package=installer.inspect(installerPath->text());
  if(!package.valid){installerStatus->setText(package.error);log(package.error);return;}
  const auto details=S("安装/修复 %1 %2？\n\n文件：%3\n签名发布者：%4\n\n将运行官方 MSI 安装向导，安装或升级 ZeroTier 服务与虚拟网卡驱动；已有连接可能中断。Windows 将单独请求管理员授权。\n不会导入或替换 planet/moon 文件。").arg(package.name,package.version,package.path,package.publisher);
@@ -55,7 +55,7 @@ void Window::installService() {
  installer.install(package.path,static_cast<quintptr>(winId()));
 }
 void Window::uninstallService() {
- if(installer.busy())return;
+ if(installer.busy() || networkMutationBusy)return;
  const auto code=installedProducts->currentData().toString();
  const auto current=installer.inventory();
  if(!current.error.isEmpty()){installerStatus->setText(current.error);return;}
