@@ -44,7 +44,12 @@ int main(int argc, char** argv) {
 #endif
             const bool networkReady = window.findChild<QTableWidget*>(QStringLiteral("ztNetworksTable")) &&
                 window.findChild<QPushButton*>(QStringLiteral("ztJoinButton")) && window.findChild<QPushButton*>(QStringLiteral("ztLeaveButton"));
-            app.exit(networkReady && bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == Window::PageCount && QSslSocket::supportsSsl() ? 0 : 1);
+            const auto* sidebarVersion = window.findChild<QLabel*>(QStringLiteral("clientVersionLabel"));
+            const auto* aboutVersion = window.findChild<QLabel*>(QStringLiteral("aboutClientVersion"));
+            const auto expectedVersion = QStringLiteral("GameLink 客户端 v")+QCoreApplication::applicationVersion();
+            const bool versionReady = sidebarVersion && aboutVersion && sidebarVersion->text() == expectedVersion &&
+                aboutVersion->text() == expectedVersion && window.windowTitle().contains(QStringLiteral("v")+QCoreApplication::applicationVersion());
+            app.exit(versionReady && networkReady && bundledReady && installerReady && detectionReady && profilesReady && tabs && tabs->count() == Window::PageCount && QSslSocket::supportsSsl() ? 0 : 1);
         });
     } else {
         window.show();

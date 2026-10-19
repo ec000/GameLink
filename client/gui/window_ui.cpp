@@ -90,7 +90,7 @@ QIcon navigationIcon(int kind, const QColor& color) {
 }
 
 void Window::buildUi(){
- setWindowTitle(S("GameLink · 游戏联机"));resize(1180,840);setMinimumSize(960,680);
+ setWindowTitle(S("GameLink v%1 · 游戏联机").arg(QCoreApplication::applicationVersion()));resize(1180,840);setMinimumSize(960,680);
  auto font = QApplication::font();
 #ifdef Q_OS_WIN
  // Keep Chinese UI text in a sans-serif family rather than the system's
@@ -177,7 +177,7 @@ void Window::buildUi(){
  connect(navigation,&QButtonGroup::idClicked,stack,&QStackedWidget::setCurrentIndex);
  connect(stack,&QStackedWidget::currentChanged,this,[navigation](int i){navigation->button(i)->setChecked(true);});navigation->button(0)->setChecked(true);
  side->addStretch();sidebarStatus=text(S("●  等待本机状态"));sidebarStatus->setObjectName(S("sidebarStatus"));side->addWidget(sidebarStatus);side->addSpacing(8);
- side->addWidget(text(S("Qt 6 · v")+QCoreApplication::applicationVersion(),"muted"));side->addWidget(text(S("ZeroTier 游戏联机客户端"),"muted"));
+ auto* clientVersion=text(S("GameLink 客户端 v")+QCoreApplication::applicationVersion(),"muted");clientVersion->setObjectName(S("clientVersionLabel"));side->addWidget(clientVersion);side->addWidget(text(S("ZeroTier 游戏联机客户端"),"muted"));
  content->addWidget(stack,1);
  lastEvent=text(S("就绪 · 请先在设置中配置本地凭证"));lastEvent->setObjectName(S("lastEvent"));lastEvent->setContentsMargins(30,0,30,14);lastEvent->setMaximumHeight(70);content->addWidget(lastEvent);
 
@@ -241,7 +241,10 @@ void Window::buildUi(){
  probeInfo=text(S("尚未探测 · 防火墙规则需按诊断文档手动添加。"),"muted");probeInfo->setObjectName(S("probeInfo"));probe->addWidget(probeInfo);
  auto* logs=card(d,S("事件日志"),S("显示最近 1,000 条事件；凭证与邀请密钥不会记录。"));events=new QPlainTextEdit;events->setObjectName(S("events"));events->setReadOnly(true);events->setMaximumBlockCount(1000);events->setMinimumHeight(210);logs->addWidget(events);d->addStretch();
 
- auto* st=pages[SettingsPage];auto* server=card(st,S("房间服务"),S("配置 GameLink 控制平面；远程地址需要 HTTPS。"));auto* sf=form(server);
+ auto* st=pages[SettingsPage];
+ auto* about=card(st,S("关于 GameLink"),S("此版本号用于识别 GameLink 客户端；ZeroTier 版本在「ZeroTier 状态」页显示。"));
+ auto* aboutVersion=text(S("GameLink 客户端 v")+QCoreApplication::applicationVersion(),"metric");aboutVersion->setObjectName(S("aboutClientVersion"));about->addWidget(aboutVersion);
+ auto* server=card(st,S("房间服务"),S("配置 GameLink 控制平面；远程地址需要 HTTPS。"));auto* sf=form(server);
  serverUrl=new QLineEdit(settings.value(S("server"),S("http://127.0.0.1:8080")).toString());serverUrl->setObjectName(S("serverUrl"));sf->addRow(S("服务地址"),serverUrl);
  serverToken=new QLineEdit;serverToken->setEchoMode(QLineEdit::Password);serverToken->setObjectName(S("serverToken"));serverToken->setPlaceholderText(S("输入访问凭证，仅保留在内存中"));sf->addRow(S("访问凭证"),serverToken);
  auto* local=card(z,S("本地 ZeroTier"),S("使用独立安装的官方客户端与受保护的 Token 文件。"));auto* lf=form(local);

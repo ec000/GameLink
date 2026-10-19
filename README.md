@@ -8,6 +8,8 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 新增独立 ZeroTier 状态页：输入 Network ID 加入、选中具体网络退网、刷新状态，展示等待授权/配置/IP、已连接、离线、异常与过期状态。服务检测、本地凭证和 MSI 管理集中到此页，概览保留摘要。退网与离开房间分别操作，不影响其他网络。详见 [状态页说明](docs/ZEROTIER_STATUS.md)。
 
+0.6.1 起，窗口标题、左下角和“设置 → 关于 GameLink”明确显示 GameLink 客户端版本，统一读取构建版本号；独立 ZeroTier 的版本在 ZeroTier 状态页显示。
+
 ## 一键安装包（0.5 新增）
 
 `GameLink-0.6.0-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
