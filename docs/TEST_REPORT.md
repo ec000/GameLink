@@ -210,3 +210,14 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 [个人离线包 CI 39267399164](https://github.com/ec000/GameLink/actions/runs/39267399164) 使用 110d925 固定的 0.6.2 基线，继续内置原版 ZeroTier 1.16.2 MSI 和用户原有 Moon/Planet。通过真实 MSI 安装、Moon API 加载、哈希/备份恢复、损坏/部分写入拒绝、重复安装/停止状态保留和独立卸载检查。本次节点 online=false 仅为 CI 样本；没有 join 用户真实网络，真实电脑授权/IP/P2P/游戏仍需实机验收。
 
 最终文件 build/artifacts/windows-0.6.2-custom-roots/GameLink-0.6.2-CustomRoots-Offline-Personal-Setup.exe，49,540,361 字节，SHA-256 c391edd77446d20b1303dedc76419dd46d46e254712b47a8513739dca20a1793。本机 AES-GCM 认证解密后与 Windows 原始大小/哈希一致，目录 0700、文件 0600。两项临时 GitHub Secret、远端密文 artifact 均删除并复查为空；本机临时密钥、根输入捆绑和密文也已清理。未公开上传个人 EXE、MSI 或自建根二进制。
+
+
+## 应用图标 0.6.3（2026-10-19）
+
+新增原创、无字体依赖的蓝色圆角白色 G 矢量图稿，生成透明 PNG 和九尺寸 ICO（16/20/24/32/40/48/64/128/256）。Qt 内嵌 PNG，用于窗口/任务栏与侧栏；Windows RC 内嵌 ICO，供 EXE、开始菜单快捷方式和卸载列表使用；Inno Setup 使用同一 ICO。正常构建只消费已提交的图标文件，不需要 Sharp；可选脚本用于从 SVG 重新生成。
+
+本机 Qt 6.11.2 编译、CTest 3/3（Qt 21 项通过、1 项 Windows 专属检查跳过）和启动图标资源自检通过。ICO 九个帧均可独立解码，尺寸与透明通道正确；人工检查图标与侧栏渲染。[Windows/Linux CI 39271596907](https://github.com/ec000/GameLink/actions/runs/39271596907) 全部通过，应用提交 cab3cdf19ee9641e6c4716666269c5c7fb5bdd54；Windows Qt 6.8.3 / MSVC 编译、3/3 CTest、Qt/CRT 部署、原生预览和实际安装器生命周期检查通过。解析最终 GameLink.exe 的 PE 资源，九个图标帧均与 ICO 源数据逐帧哈希一致。ZIP 全量 CRC 校验通过、无 MSI，SHA-256 23033d8c076b6eb518ab7e91b973338646201563c88b8c91b38952efd86af2aa。
+
+[个人离线包 CI 39272358281](https://github.com/ec000/GameLink/actions/runs/39272358281) 使用 f5bdeb7 固定的 0.6.3 基线，继续内置原版 ZeroTier 1.16.2 MSI 和原有 Moon/Planet；真实安装、根文件备份恢复、Moon 加载、重复安装/独立卸载检查通过。最终安装器 PE 资源也确认包含全部九个原始图标帧。图标变更不调整网络或凭据配置；未进行用户 Windows 桌面图标缓存、真实网络和游戏验收。
+
+交付 build/artifacts/windows-0.6.3-custom-roots/GameLink-0.6.3-CustomRoots-Offline-Personal-Setup.exe，49,673,584 字节，SHA-256 6bac02533407a8da6a54d674ba7b1803bccfe3025c983fbe3523752f65f04a33；本机认证解密后与 Windows 原始文件大小/哈希一致。目录 0700、文件 0600。两项临时 GitHub Secret 与远端密文已删除并复查为空，本机临时密钥、输入捆绑和密文已清理，个人 EXE/MSI/根文件二进制未公开上传。
