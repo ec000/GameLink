@@ -28,3 +28,21 @@
 加入/离开与 Windows Installer 操作互斥，进行中禁止重复请求和切换本地凭证/端口，旧请求回包不能恢复过期状态。退网确认后重新核对身份、目标存在状态及凭证上下文。
 
 本地与 Windows 回归使用临时回环 HTTP 模拟服务验证状态迁移和退网语义；这些测试不会加入用户的真实网络。真实授权/P2P/游戏需单独验收。
+
+## 本地 API 凭据与刷新排查（0.6.2）
+
+服务 Running、服务端显示节点 ONLINE，而 GameLink 报 TOKEN_MISSING 时，是 GUI 缺少本机 API 凭据，不能据此认定节点离线。无需重新 join、授权或更换 planet/moon。
+
+Windows 自动检测以下已有文件（不生成、复制或修改它们）：
+
+1. `%LOCALAPPDATA%/ZeroTier/One/authtoken.secret`（新版官方用户副本）。
+2. `%LOCALAPPDATA%/ZeroTier/authtoken.secret`（旧版官方用户副本）。
+3. `%PROGRAMDATA%/ZeroTier/One/authtoken.secret`（仅当前用户已有读取权限时）。
+
+启动时，仅在路径为空，或旧默认 `%LOCALAPPDATA%/GameLink/zerotier-token.secret` 缺失时自动检测；用户显式配置的其他路径不会被自动覆盖。点击页面顶部“检测本机凭据”可主动重新检测，先尝试当前路径，再尝试官方路径。每个候选都通过当前配置端口的回环 `/status` 验证，旧副本 401/403 时继续尝试其他位置，成功才保存路径。检测本身仅 GET，不 join/leave 或启停服务。
+
+若没有可读凭据，先从开始菜单启动官方 ZeroTier One 托盘程序，完成它自己的权限提示，再回 GameLink 检测。也可在“本地 ZeroTier”选择已有受保护的本机 Token 文件。手动输入请使用完整路径（例如 `C:/Users/用户名/AppData/Local/ZeroTier/authtoken.secret`），不直接输入 `%LOCALAPPDATA%` 环境变量表达式。保存并刷新后，已加入的所有网络会直接列出名称、状态和虚拟 IP，无需重复加入。
+
+凭据检测不会更改 API 端口；连接被拒绝或超时时应核对服务及检测到的端口。凭据内容只发送给 `127.0.0.1`，不写日志或普通设置。只需配置每台电脑自己的本地 Token，不能使用 VPS Controller 管理密钥。
+
+路径依据：官方 [DesktopUI serviceclient.rs](https://github.com/zerotier/DesktopUI/blob/main/src/serviceclient.rs) 兼容新版与旧版用户副本；旧副本失效的情况也见官方 [issue 44](https://github.com/zerotier/DesktopUI/issues/44)。

@@ -1,6 +1,6 @@
 ﻿; Per-user GameLink setup. Only the independent MSI prerequisite requests UAC.
 #ifndef MyAppVersion
-  #define MyAppVersion "0.6.1"
+  #define MyAppVersion "0.6.2"
 #endif
 #ifndef StageDir
   #define StageDir "..\build\stage"

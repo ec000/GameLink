@@ -1,5 +1,7 @@
 #include "window.hpp"
 #include <QHeaderView>
+#include <QFileInfo>
+#include <QDir>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -14,7 +16,7 @@ QString idOf(const QJsonObject& n){return n[S("id")].toString(n[S("nwid")].toStr
 QString addresses(const QJsonObject& n){QStringList out;for(const auto& v:n[S("assignedAddresses")].toArray())out<<v.toString();return out.join(S(", "));}
 }
 bool Window::localSampleFresh()const{
- return sample.serviceAvailable && sampleAge.isValid() && sampleAge.elapsed()<=6000 &&
+ return !credentialBusy && sample.serviceAvailable && sampleAge.isValid() && sampleAge.elapsed()<=6000 &&
         sampledPort==ztPort->text().toInt() && sampledTokenFile==ztTokenFile->text();
 }
 QString Window::networkState(const QJsonObject& n,bool fresh)const{
@@ -36,6 +38,11 @@ void Window::renderZeroTier(){
  const bool fresh=localSampleFresh();
  const auto targetId=roomId.isEmpty()?manualNetwork->text().trimmed().toLower():network;
  zeroTierNodeStatus->setText(fresh?S("Node %1 · %2 · ZeroTier %3").arg(node,sample.online?(sample.tcpFallback?S("在线 · TCP 回退"):S("在线")):S("离线"),apiVersion):S("本地 API 未就绪或状态已过期，请检查下方凭证与服务状态。"));
+ QString credentialMessage;
+ if(credentialBusy)credentialMessage=S("正在检测本机凭据并验证本地 API…");
+ else if(!fresh && (localApiMessage.contains(S("[TOKEN_")) || localApiMessage.contains(S("[AUTH_FAILED]"))))
+  credentialMessage=S("GameLink 尚未取得有效的本机 API 凭据，无法读取网络状态；这不代表 ZeroTier 已离线。请点击「检测本机凭据」，或在下方选择 Token 文件。若仍失败，先打开官方 ZeroTier One 完成权限提示再检测。");
+ credentialStatus->setText(credentialMessage);credentialStatus->setVisible(!credentialMessage.isEmpty());
  zeroTierNetworkId->setText(targetId.isEmpty()?S("输入 Network ID 或先加入 GameLink 房间"):S("%1 · Network ID %2").arg(roomId.isEmpty()?S("手动网络"):S("房间 ")+roomId,targetId));
  QString targetState=fresh?S("未加入"):S("状态未知，请刷新");
  for(const auto& v:networks)if(idOf(v.toObject())==targetId){targetState=networkState(v.toObject(),fresh);break;}
@@ -56,15 +63,59 @@ void Window::renderZeroTier(){
   }
   networksTable->setProperty("snapshot",tableKey);
  }
- const bool available=!installer.busy() && !networkMutationBusy && !mutationBusy;
+ const bool available=!installer.busy() && !networkMutationBusy && !mutationBusy && !credentialBusy;
  const int row=networksTable->currentRow();
  leaveZeroTier->setEnabled(available && fresh && row>=0 && networksTable->item(row,0));
  joinZeroTier->setEnabled(available && fresh && validNetwork(targetId));
  roomJoinNetwork->setEnabled(available && fresh && validNetwork(targetId));
  manualNetwork->setEnabled(available && roomId.isEmpty());
- ztPort->setEnabled(!installer.busy() && !networkMutationBusy);ztTokenFile->setEnabled(!installer.busy() && !networkMutationBusy);
- useDetectedPort->setEnabled(!installer.busy() && !networkMutationBusy && environment.detectedPort>0 && environment.detectedPort!=ztPort->text().toInt());
+ const bool credentialsEnabled=!installer.busy() && !networkMutationBusy && !credentialBusy;
+ ztPort->setEnabled(credentialsEnabled);ztTokenFile->setEnabled(credentialsEnabled);
+ detectCredentialButton->setEnabled(credentialsEnabled);chooseCredentialButton->setEnabled(credentialsEnabled);
+ useDetectedPort->setEnabled(credentialsEnabled && environment.detectedPort>0 && environment.detectedPort!=ztPort->text().toInt());
  updateInstallerButtons();
+}
+void Window::detectCredentials(){
+ if(installer.busy() || networkMutationBusy || credentialBusy)return;
+ QStringList candidates{ztTokenFile->text()};candidates.append(credentialLocator());
+ QStringList paths;
+ for(const auto& candidate:candidates){
+  if(candidate.isEmpty())continue;
+  const auto path=QDir::fromNativeSeparators(candidate);
+  if(QFileInfo(path).isAbsolute() && !paths.contains(QDir::cleanPath(path)))paths<<QDir::cleanPath(path);
+ }
+ credentialBusy=true;++serviceGeneration;
+ localFailure(S("凭据检测"),S("正在验证本机 API"));
+ tryCredential(paths,ztPort->text().toInt(),ztTokenFile->text(),serviceGeneration);
+}
+void Window::tryCredential(QStringList paths,int port,QString original,quint64 generation,QString lastError){
+ if(generation!=serviceGeneration || installer.busy() || port!=ztPort->text().toInt() || original!=ztTokenFile->text()){
+  credentialBusy=false;render();return;
+ }
+ // Only read accessible existing files. Never copy service credentials or request elevation.
+ while(!paths.isEmpty() && (!QFileInfo(paths.first()).isFile() || !QFileInfo(paths.first()).isReadable()))paths.removeFirst();
+ if(paths.isEmpty()){
+  credentialBusy=false;
+  localFailure(S("凭据检测"),lastError.isEmpty()?S("[TOKEN_MISSING] 未找到当前用户可读的本机凭据；请打开官方 ZeroTier One 完成权限提示，或在下方选择已有 Token 文件。"):lastError);
+  return;
+ }
+ const auto candidate=paths.takeFirst();
+ transport.local(port,candidate,S("GET"),S("/status"),{},[this,paths,port,original,generation,candidate](QJsonDocument doc,QString error){
+  if(generation!=serviceGeneration || installer.busy() || port!=ztPort->text().toInt() || original!=ztTokenFile->text()){
+   credentialBusy=false;render();return;
+  }
+  if(error.isEmpty()){
+   const auto info=doc.object();
+   if(!doc.isObject() || !QRegularExpression(S("^[0-9a-f]{10}$")).match(info[S("address")].toString()).hasMatch() || !info[S("online")].isBool() || !info[S("clock")].isDouble())error=S("[API_SCHEMA_UNSUPPORTED] 本机 API 状态格式不兼容，请核对端口与版本");
+  }
+  if(!error.isEmpty()){
+   // A stale per-user copy must not hide another valid official credential.
+   if(error.contains(S("[AUTH_FAILED]")) || error.contains(S("[TOKEN_"))){tryCredential(paths,port,original,generation,error);return;}
+   credentialBusy=false;localFailure(S("凭据检测"),error);return;
+  }
+  credentialBusy=false;ztTokenFile->setText(candidate);save();
+  log(S("已检测并验证本机 ZeroTier 凭据，正在读取网络状态。"));render();pollLocal();
+ });
 }
 void Window::localJoin(){
  if(installer.busy() || networkMutationBusy || mutationBusy){log(S("ZeroTier 或房间操作进行中，请等待结束。"));return;}

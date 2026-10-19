@@ -10,9 +10,11 @@ Windows 游戏联机客户端（C++20 / Qt 6）与 Go 控制平面。复用独�
 
 0.6.1 起，窗口标题、左下角和“设置 → 关于 GameLink”明确显示 GameLink 客户端版本，统一读取构建版本号；独立 ZeroTier 的版本在 ZeroTier 状态页显示。
 
+0.6.2 修复首次凭据配置：兼容官方 Windows 新版 `ZeroTier/One/authtoken.secret` 与旧版 `ZeroTier/authtoken.secret`，验证本机 API 成功后保存路径。新增“检测本机凭据”和文件选择；明确区分 GameLink 无法读取 API 与 ZeroTier 节点离线。已有自定义路径保留，只有缺失的旧默认占位路径自动迁移。详见 [凭据与刷新排查](docs/ZEROTIER_STATUS.md#本地-api-凭据与刷新排查062)。
+
 ## 一键安装包（0.5 新增）
 
-`GameLink-0.6.1-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
+`GameLink-0.6.2-Setup.exe` 包含 GameLink 与 Qt 运行库；默认从 **ZeroTier 官方源下载并安装 1.16.2**，无需手动下载 MSI。保留默认选项并点击安装即可，下载时需要网络；ZeroTier 服务/驱动安装请求管理员授权，GameLink 安装到当前用户目录。
 
 安装器保留相同或更新的标准 MSI 安装，不降级、不覆盖自定义服务；升级较旧的版本使用官方 MSI。失败/取消时阻止 GameLink 安装继续，需要重启时提示手动重启。卸载 GameLink 会保留独立的 ZeroTier；如需卸载 ZeroTier，使用 ZeroTier 状态页的明确卸载操作。本次下载的原版 MSI 缓存到应用目录，供后续修复；跳过下载时不创建缓存。
 

@@ -45,7 +45,7 @@ gamelink::Peer parsePeer(const QJsonObject& p){
  return out;
 }
 }
-Window::Window(gamelink::EnvironmentInspector inspector,std::shared_ptr<gamelink::InstallerPlatform> installerPlatform):environmentInspector(std::move(inspector)),installer(std::move(installerPlatform),this),transport(this),settings(),udp(this){
+Window::Window(gamelink::EnvironmentInspector inspector,std::shared_ptr<gamelink::InstallerPlatform> installerPlatform,gamelink::CredentialLocator locator):environmentInspector(std::move(inspector)),credentialLocator(std::move(locator)),installer(std::move(installerPlatform),this),transport(this),settings(),udp(this){
  buildUi();
  const QDir profileDir(QCoreApplication::applicationDirPath()+S("/profiles"));
  for(const auto& file:profileDir.entryList({S("*.json")},QDir::Files)){
@@ -70,14 +70,18 @@ Window::Window(gamelink::EnvironmentInspector inspector,std::shared_ptr<gamelink
  connect(&installer,&gamelink::ZeroTierInstaller::completed,this,[this](const gamelink::InstallerResult& result){
   const auto message=S("ZeroTier 服务管理：")+result.message;refreshInstaller();installerStatus->setText(message);log(message);refreshEnvironment();pollLocal();
  });
- joiningAge.start();refreshEnvironment();refreshInstaller();pollLocal();log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
+ joiningAge.start();refreshEnvironment();refreshInstaller();
+ // Migrate only the old, absent placeholder. Keep all explicitly chosen paths.
+ if(ztTokenFile->text().isEmpty() || (QDir::cleanPath(ztTokenFile->text())==QDir::cleanPath(gamelink::legacyGameLinkTokenPath()) && !QFileInfo::exists(ztTokenFile->text())))detectCredentials();
+ else pollLocal();
+ log(S("MVP 启动；严格直连不可用；NAT 原因仅凭 local API 无法确定"));
 }
 void Window::refreshEnvironment(){
  environment=environmentInspector();
  installationStatus->setText(S("安装检测：")+gamelink::installationDescription(environment));
  serviceStatus->setText(S("Windows 服务：")+gamelink::serviceDescription(environment.service));
  portStatus->setText(environment.portDetail);
- useDetectedPort->setEnabled(!installer.busy() && !networkMutationBusy && environment.detectedPort>0 && environment.detectedPort!=ztPort->text().toInt());
+ useDetectedPort->setEnabled(!installer.busy() && !networkMutationBusy && !credentialBusy && environment.detectedPort>0 && environment.detectedPort!=ztPort->text().toInt());
 }
 void Window::localFailure(const QString& stage,const QString& reason){
  sample={};sampleAge.invalidate();probeHealthy=false;stopProbe();udp.close();
@@ -144,7 +148,7 @@ void Window::clearRoom(){
  roomId.clear();invite.clear();sessionPolicy.clear();network.clear();roomPeers={};target->clear();stopProbe();udp.close();sample={};probeHealthy=false;roomInfo->setText(S("没有房间"));render();
 }
 void Window::pollLocal(){
- if(installer.busy() || networkMutationBusy)return;
+ if(installer.busy() || networkMutationBusy || credentialBusy)return;
  if(localBusy)return;localBusy=true;const int port=ztPort->text().toInt();const auto token=ztTokenFile->text();const auto expectedNetwork=network;const auto generation=serviceGeneration;QElapsedTimer batchClock;batchClock.start();
  // Sample peers before status.clock so lastReceive isn't compared to an earlier clock.
  transport.local(port,token,S("GET"),S("/peer"),{},[this,port,token,expectedNetwork,batchClock,generation](QJsonDocument peers,QString err){

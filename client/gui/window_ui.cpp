@@ -194,6 +194,8 @@ void Window::buildUi(){
  zeroTierNodeStatus=text(S("等待检测"));zeroTierNodeStatus->setObjectName(S("ztNodeStatus"));ztSummary->addWidget(zeroTierNodeStatus);
  zeroTierNetworkId=text(S("尚未选择网络"),"muted");zeroTierNetworkId->setObjectName(S("ztTargetNetwork"));ztSummary->addWidget(zeroTierNetworkId);
  zeroTierNetworkStatus=text(S("未加入"),"metric");zeroTierNetworkStatus->setObjectName(S("ztNetworkStatus"));ztSummary->addWidget(zeroTierNetworkStatus);
+ credentialStatus=text({},"muted");credentialStatus->setObjectName(S("ztCredentialStatus"));ztSummary->addWidget(credentialStatus);
+ auto* credentialActions=row(ztSummary);detectCredentialButton=action(S("检测本机凭据"),credentialActions,[this]{detectCredentials();},"secondary","ztDetectCredentialsButton");credentialActions->addStretch();
  auto* controls=card(z,S("虚拟网络"),S("Network ID 与房间 ID 不同。有房间时加入房间指定网络；退网仅作用于表格中选中的网络，房间与控制器授权保留。"));
  auto* networkForm=form(controls);manualNetwork=new QLineEdit(settings.value(S("network")).toString());manualNetwork->setObjectName(S("manualNetwork"));manualNetwork->setPlaceholderText(S("输入 16 位 Network ID"));networkForm->addRow(S("Network ID"),manualNetwork);
  auto* networkActions=row(controls);joinZeroTier=action(S("加入网络"),networkActions,[this]{localJoin();},"primary","ztJoinButton");leaveZeroTier=action(S("离开选中网络"),networkActions,[this]{localLeave();},"secondary","ztLeaveButton");action(S("刷新状态"),networkActions,[this]{refreshEnvironment();pollLocal();},"secondary","ztRefreshButton");networkActions->addStretch();
@@ -248,13 +250,13 @@ void Window::buildUi(){
  serverUrl=new QLineEdit(settings.value(S("server"),S("http://127.0.0.1:8080")).toString());serverUrl->setObjectName(S("serverUrl"));sf->addRow(S("服务地址"),serverUrl);
  serverToken=new QLineEdit;serverToken->setEchoMode(QLineEdit::Password);serverToken->setObjectName(S("serverToken"));serverToken->setPlaceholderText(S("输入访问凭证，仅保留在内存中"));sf->addRow(S("访问凭证"),serverToken);
  auto* local=card(z,S("本地 ZeroTier"),S("使用独立安装的官方客户端与受保护的 Token 文件。"));auto* lf=form(local);
-#ifdef Q_OS_WIN
- const auto tokenDefault=qEnvironmentVariable("LOCALAPPDATA")+S("/GameLink/zerotier-token.secret");
-#else
- const auto tokenDefault=QDir::homePath()+S("/.config/gamelink/zerotier-token.secret");
-#endif
- ztTokenFile=new QLineEdit(settings.value(S("ztTokenFile"),tokenDefault).toString());ztTokenFile->setObjectName(S("ztTokenFile"));lf->addRow(S("Token 文件"),ztTokenFile);
+ ztTokenFile=new QLineEdit(settings.value(S("ztTokenFile"),gamelink::legacyGameLinkTokenPath()).toString());ztTokenFile->setObjectName(S("ztTokenFile"));lf->addRow(S("Token 文件"),ztTokenFile);
  ztPort=new QLineEdit(settings.value(S("ztPort"),S("9993")).toString());ztPort->setObjectName(S("ztPort"));lf->addRow(S("API 端口"),ztPort);
+ auto* tokenActions=row(local);chooseCredentialButton=action(S("选择 Token 文件"),tokenActions,[this]{
+  const auto path=QFileDialog::getOpenFileName(this,S("选择本机 ZeroTier authtoken.secret"),ztTokenFile->text(),S("凭据文件 (*.secret);;所有文件 (*)"));
+  if(!path.isEmpty() && !installer.busy() && !networkMutationBusy && !credentialBusy){ztTokenFile->setText(path);save();pollLocal();}
+ },"secondary","ztChooseCredentialsButton");tokenActions->addStretch();
+ local->addWidget(text(S("自动检测兼容 Windows 的 ZeroTier\\One\\authtoken.secret 和旧版 ZeroTier\\authtoken.secret。若没有当前用户可读的凭据，请先打开官方 ZeroTier One 托盘程序，完成其权限提示后重新检测。仅保存路径，不复制或显示 Token。"),"muted"));
  auto* service=card(z,S("ZeroTier 服务管理"),S("通过官方 MSI 安装/修复或卸载整个 ZeroTier 产品（含服务与虚拟网卡）。操作时由 Windows 请求管理员授权。"));
  auto* serviceForm=form(service);
  installerPath=new QLineEdit;installerPath->setReadOnly(true);installerPath->setObjectName(S("ztMsiPath"));installerPath->setPlaceholderText(S("优先使用本地缓存的官方 MSI，也可手动选择更新版本"));serviceForm->addRow(S("官方安装包"),installerPath);

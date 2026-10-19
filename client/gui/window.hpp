@@ -2,6 +2,7 @@
 #include "transport.hpp"
 #include "p2p.hpp"
 #include "zerotier_environment.hpp"
+#include "zerotier_credentials.hpp"
 #include "zerotier_installer.hpp"
 #include <QMainWindow>
 #include <QSettings>
@@ -17,11 +18,15 @@ class Window : public QMainWindow {
 public:
  enum Page { OverviewPage, GamesPage, RoomPage, ZeroTierPage, DiagnosticsPage, SettingsPage, PageCount };
  explicit Window(gamelink::EnvironmentInspector inspector=gamelink::inspectZeroTierEnvironment,
-                 std::shared_ptr<gamelink::InstallerPlatform> installerPlatform=gamelink::nativeInstallerPlatform());
+                 std::shared_ptr<gamelink::InstallerPlatform> installerPlatform=gamelink::nativeInstallerPlatform(),
+                 gamelink::CredentialLocator credentialLocator=gamelink::zeroTierCredentialPaths);
 protected:
  void closeEvent(QCloseEvent*) override;
 private:
  gamelink::EnvironmentInspector environmentInspector;gamelink::EnvironmentReport environment;
+ gamelink::CredentialLocator credentialLocator;bool credentialBusy{};
+ QPushButton *detectCredentialButton,*chooseCredentialButton;
+ QLabel* credentialStatus;
  gamelink::ZeroTierInstaller installer;gamelink::ProductInventory installerInventory;
  quint64 serviceGeneration{};
  QLabel* installerStatus;QLineEdit* installerPath;QComboBox* installedProducts;
@@ -43,6 +48,7 @@ private:
  QUdpSocket udp;QByteArray probeNonce;QHostAddress probeTarget;quint16 activeProbePort{};
  std::vector<std::optional<double>> rtts;int echoBudget{};
  void buildUi();void refreshEnvironment();void localFailure(const QString&,const QString&);
+ void detectCredentials();void tryCredential(QStringList,int,QString,quint64,QString={});
  void refreshInstaller();void updateInstallerButtons();void selectInstaller();void installService();void uninstallService();
  void log(const QString&);void save();void pollLocal();void pollRoom();void render();void roomAction(bool create);void applyRoom(const QJsonObject&);
  void localJoin();void localLeave();void renderZeroTier();bool localSampleFresh()const;QString networkState(const QJsonObject&,bool)const;

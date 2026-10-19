@@ -2,6 +2,7 @@
 #include "window.hpp"
 #include "zerotier_environment.hpp"
 #include <QFile>
+#include <QDir>
 #include <QFontMetrics>
 #include <QComboBox>
 #include <QElapsedTimer>
@@ -114,6 +115,76 @@ private slots:
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDirectory.path());
     }
     void init() { QSettings settings; settings.clear(); settings.sync(); }
+
+    void officialCredentialsMigrateMissingPlaceholderAndSkipStaleCopy() {
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const auto paths=gamelink::windowsCredentialPaths(directory.path(),{});
+        QCOMPARE(paths.size(),2);
+        QVERIFY(paths[0].endsWith(S("/ZeroTier/One/authtoken.secret")));
+        QVERIFY(paths[1].endsWith(S("/ZeroTier/authtoken.secret")));
+        QVERIFY(gamelink::windowsCredentialPaths({},{}).isEmpty());
+        for(int i=0;i<paths.size();++i){
+            QVERIFY(QDir().mkpath(QFileInfo(paths[i]).absolutePath()));
+            QFile file(paths[i]);QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write(i==0?QByteArray("stale-local-token"):localToken);file.close();
+        }
+        HttpFixture fixture;QVERIFY(fixture.listen());
+        fixture.handler=[&](const Request& request,QTcpSocket* socket){
+            QCOMPARE(request.method,QByteArray("GET"));
+            if(request.headers.value("x-zt1-auth")!=localToken){HttpFixture::reply(socket,"private-rejection",403);return;}
+            if(request.path=="/status")HttpFixture::reply(socket,R"({"address":"52f959093f","online":true,"clock":100000,"version":"1.16.2"})");
+            else if(request.path=="/peer")HttpFixture::reply(socket,"[]");
+            else if(request.path=="/network")HttpFixture::reply(socket,R"([{"id":"17beb7d23da4da9f","name":"ec_network","status":"OK","assignedAddresses":["10.44.198.25/24"]}])");
+            else QFAIL("Unexpected request");
+        };
+        QSettings settings;settings.setValue(S("ztPort"),fixture.server.serverPort());
+        settings.setValue(S("ztTokenFile"),gamelink::legacyGameLinkTokenPath());settings.sync();
+        Window window([]{return gamelink::EnvironmentReport{};},gamelink::nativeInstallerPlatform(),[paths]{return paths;});
+        auto* token=window.findChild<QLineEdit*>(S("ztTokenFile"));
+        auto* node=window.findChild<QLabel*>(S("ztNodeStatus"));
+        auto* table=window.findChild<QTableWidget*>(S("ztNetworksTable"));
+        auto* events=window.findChild<QPlainTextEdit*>(S("events"));
+        QVERIFY(token && node && table && events);
+        QTRY_VERIFY(node->text().contains(S("52f959093f")));
+        QCOMPARE(token->text(),paths[1]);QCOMPARE(table->rowCount(),1);
+        QCOMPARE(table->item(0,0)->text(),S("17beb7d23da4da9f"));
+        QVERIFY(table->item(0,3)->text().contains(S("10.44.198.25")));
+        settings.sync();QCOMPARE(settings.value(S("ztTokenFile")).toString(),paths[1]);
+        for(const auto& key:settings.allKeys())QVERIFY(!settings.value(key).toString().contains(QString::fromUtf8(localToken)));
+        QVERIFY(!events->toPlainText().contains(QString::fromUtf8(localToken)));
+        QVERIFY(!events->toPlainText().contains(S("stale-local-token")));
+        QVERIFY(!events->toPlainText().contains(S("private-rejection")));
+    }
+
+    void credentialDetectionPreservesCustomPathUntilExplicitAndDoesNotAcceptRejectedToken() {
+        HttpFixture fixture;QVERIFY(fixture.listen());
+        QTemporaryFile tokenFile;QVERIFY(tokenFile.open());tokenFile.write(localToken);tokenFile.flush();
+        bool reject=true;
+        fixture.handler=[&](const Request& request,QTcpSocket* socket){
+            QCOMPARE(request.method,QByteArray("GET"));
+            if(reject){HttpFixture::reply(socket,"sensitive response",401);return;}
+            if(request.path=="/status")HttpFixture::reply(socket,R"({"address":"52f959093f","online":false,"clock":100000})");
+            else HttpFixture::reply(socket,"[]");
+        };
+        const auto custom=settingsDirectory.filePath(S("custom-missing-token"));
+        QSettings settings;settings.setValue(S("ztTokenFile"),custom);settings.setValue(S("ztPort"),fixture.server.serverPort());settings.sync();
+        Window window([]{return gamelink::EnvironmentReport{};},gamelink::nativeInstallerPlatform(),[&]{return QStringList{tokenFile.fileName()};});
+        auto* token=window.findChild<QLineEdit*>(S("ztTokenFile"));
+        auto* detect=window.findChild<QPushButton*>(S("ztDetectCredentialsButton"));
+        auto* status=window.findChild<QLabel*>(S("localApiStatus"));
+        auto* guide=window.findChild<QLabel*>(S("ztCredentialStatus"));
+        QVERIFY(token && detect && status && guide);
+        QCOMPARE(token->text(),custom);QVERIFY(fixture.requests.isEmpty());
+        QVERIFY(status->text().contains(S("[TOKEN_MISSING]")));
+        QVERIFY(guide->text().contains(S("不代表 ZeroTier 已离线")));
+        detect->click();QTRY_VERIFY(status->text().contains(S("[AUTH_FAILED]")));
+        QCOMPARE(token->text(),custom);QVERIFY(detect->isEnabled());
+        settings.sync();QCOMPARE(settings.value(S("ztTokenFile")).toString(),custom);
+        reject=false;detect->click();
+        QTRY_VERIFY(status->text().contains(S("认证成功")));
+        QCOMPARE(token->text(),tokenFile.fileName());
+        QVERIFY(window.findChild<QLabel*>(S("ztNodeStatus"))->text().contains(S("离线")));
+    }
 
     void sidebarNavigationAndSmallWindowRemainUsable() {
         Window window([] { return gamelink::EnvironmentReport{}; });
