@@ -10,10 +10,10 @@
 #define S(x) QStringLiteral(x)
 Transport::Transport(QObject* parent):QObject(parent),manager(this){manager.setProxy(QNetworkProxy::NoProxy);}
 void Transport::local(int port,const QString& tokenFile,const QString& method,const QString& path,const QJsonObject& body,Callback done){
- if(port<1 || port>65535){done({},S("[INVALID_PORT] 本地 API 端口必须为 1–65535；请检查 Settings"));return;}
- if(tokenFile.trimmed().isEmpty()){done({},S("[TOKEN_PATH_EMPTY] 未配置本地 Token 文件路径；请在 Settings 指定受保护的凭证副本"));return;}
+ if(port<1 || port>65535){done({},S("[INVALID_PORT] 本地 API 端口必须为 1–65535；请检查「ZeroTier 状态」页"));return;}
+ if(tokenFile.trimmed().isEmpty()){done({},S("[TOKEN_PATH_EMPTY] 未配置本地 Token 文件路径；请在「ZeroTier 状态」页指定受保护的凭证副本"));return;}
  QFile f(tokenFile);
- if(!QFileInfo(f).exists()){done({},S("[TOKEN_MISSING] 未找到本地 Token 文件，或当前用户无法访问其路径；请核对 Settings 中的路径与权限"));return;}
+ if(!QFileInfo(f).exists()){done({},S("[TOKEN_MISSING] 未找到本地 Token 文件，或当前用户无法访问其路径；请核对「ZeroTier 状态」页中的路径与权限"));return;}
  if(!QFileInfo(f).isFile()){done({},S("[TOKEN_INVALID] Token 路径不是普通文件"));return;}
  if(!f.open(QIODevice::ReadOnly)){done({},S("[TOKEN_ACCESS_DENIED] 本地 Token 不可读；请检查当前用户的文件读取权限，GUI 无需管理员运行"));return;}
  const auto bytes=f.read(513);
