@@ -46,3 +46,20 @@ Windows 自动检测以下已有文件（不生成、复制或修改它们）：
 凭据检测不会更改 API 端口；连接被拒绝或超时时应核对服务及检测到的端口。凭据内容只发送给 `127.0.0.1`，不写日志或普通设置。只需配置每台电脑自己的本地 Token，不能使用 VPS Controller 管理密钥。
 
 路径依据：官方 [DesktopUI serviceclient.rs](https://github.com/zerotier/DesktopUI/blob/main/src/serviceclient.rs) 兼容新版与旧版用户副本；旧副本失效的情况也见官方 [issue 44](https://github.com/zerotier/DesktopUI/issues/44)。
+
+### 文件存在，但 API 返回 401/403
+
+这说明 GameLink 已读取文件并向本机接口发出请求，但凭据未被接受；不等同于网络未授权或节点离线。用户目录中的副本可能与当前服务 Token 不一致，仅找到文件不能修复这一情况。
+
+先点页面顶部的“检测本机凭据”，尝试其他可读的官方位置。环境卡片的“重新检测”只查询安装/服务/端口并刷新当前配置，不会切换 Token 路径。
+
+若仍失败，可按官方用户凭据恢复流程处理：
+
+1. 退出官方 ZeroTier 托盘程序（只退出界面，不停止系统服务）。
+2. 将 `%LOCALAPPDATA%/ZeroTier/authtoken.secret` 改名为 `authtoken.secret.bak`；若 `ZeroTier/One/authtoken.secret` 也存在，同样改名，已有备份则使用其他备份名。只处理当前用户目录中的副本。
+3. 从开始菜单重新打开官方 ZeroTier One，完成它的权限提示，使其重新取得本机服务凭据。
+4. 回到 GameLink 点“检测本机凭据”，然后检查网络列表和 Node ID。
+
+不要改动 `%PROGRAMDATA%/ZeroTier/One/authtoken.secret`、identity 文件、planet/moon 或 networks.d，也无需为此在服务器添加 authTokens。恢复步骤以官方 [用户 Token 清理说明](https://docs.zerotier.com/faq/appcrashes/) 和 DesktopUI 的重新取证流程为依据；此处用改名保留用户旧副本。服务 Token 的位置与用途见 [官方 Token 文档](https://docs.zerotier.com/tokens/#zerotierone-local-service-token)。
+
+若当前服务 Token 仍无法认证，需要进一步核对本机实际服务数据目录、端口和服务实例。不要上传 Token 内容；只有 Windows 本机验证结果才能确认具体原因。
