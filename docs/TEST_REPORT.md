@@ -171,3 +171,18 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 边界：API 采样的 `online` 为 false；这次只证明本地安装和 Moon 加载，不证明自建服务器离线，也不证明它已可达。未提供 Network ID/GameLink 服务端登录配置，因此未 join、未授权真实成员、未验证虚拟 IP/P2P/NAT/游戏。Windows 10/11 标准用户、跨账号 UAC、策略/重启等仍需实机验收。安装器尚未签名。
 
 交付文件：build/artifacts/windows-0.5.0-custom-roots/GameLink-0.5.0-CustomRoots-Offline-Personal-Setup.exe，49,530,398 字节，SHA-256 `1c24e0199b458a1cc548efa7bdbfb19e2a2dbb5867a17a9878cffe7917bc1332`。原版 ZeroTier MSI 与 Qt 运行库一同内嵌，新增根节点文件，无须手动复制。安装包认证解密后的本机哈希/大小与 Windows 测试文件一致。最终目录 0700、文件 0600；根节点输入经临时 Secret 传送，未提交二进制到公有仓库，EXE 仅加密上传并已删除远端密文及两项临时 Secret，本机临时密钥、输入捆绑、密文均已清理。原始用户文件保留在用户提供的目录。未创建公开 Release。
+
+
+## ZeroTier 独立状态页 0.6.0（2026-10-19）
+
+新增六页导航中的 ZeroTier 状态页：显式加入、选中网络退网、手动刷新、所有本机网络列表、节点/目标网络分开显示。安装检测、API 凭证、服务安装/卸载从设置和概览集中到此页，概览保留快捷入口。房间 ID 与 Network ID 分别显示。
+
+本机 macOS / Qt 6.11.2 编译通过，CTest 3/3；Qt 19 项通过、1 项仅 Windows 的原版 MSI 检查跳过。[Windows/Linux 构建](https://github.com/ec000/GameLink/actions/runs/39251336067) 全部通过，Windows 原生 Qt 6.8.3 编译、CTest 3/3、六页大小窗口布局/截图、Qt/CRT 独立部署和真实在线安装器生命周期检查通过。应用源提交 732fd835d467b02a749ec69d3b53938bbeb24f39。
+
+新增回环 API 集成测试覆盖：POST 新网络的路由/DNS 安全参数、等待授权 → 等待配置 → 等待 IP → 已连接；延迟响应时禁止重复点击及 MSI 操作；两个网络同时存在时只 DELETE 表格选中的网络；取消确认不发送 DELETE；HTTP 失败不移除成员行，成功后读取确认其他网络保留；认证失败时旧样本标为过期且禁用网络操作；凭据和上游错误内容不进入日志。原房间创建、入网、DIRECT/RELAY/UNKNOWN、离开房间场景回归通过。
+
+[个人定制离线包](https://github.com/ec000/GameLink/actions/runs/39251944698) 使用 0eeaa2e 固定的 0.6.0 基线 ZIP；ZIP SHA-256 为 772fe4bc4dc72cf4b12937c3a448be23f463eacd99def7244cad148769f8ee03，本机全量 CRC 与不含 MSI 检查通过。个人包继续内置原版 ZeroTier 1.16.2 MSI、用户提供的 planet/moon，完成真实安装、根节点哈希、API Moon 加载、损坏拒绝、部分写入恢复、重复安装保留停止状态/身份、GUI 自检及独立卸载验证。
+
+最终文件：build/artifacts/windows-0.6.0-custom-roots/GameLink-0.6.0-CustomRoots-Offline-Personal-Setup.exe，49,536,526 字节，SHA-256 09a61fcc4f26a262d435fcf6a1c0aed470ad360dcd77a1476316f89d86a4e92b。AES-GCM 认证解密、本机与 Windows 原始文件大小/哈希一致，目录 0700、文件 0600。两项临时 Secret 和密文 artifact 已删除并复查数量为零，本机临时密钥、输入捆绑和下载密文也已清理；未公开上传个人 EXE、原始 MSI 或根节点二进制。
+
+边界：新加入/退网测试使用回环模拟服务，没有加入或离开用户真实网络。实际安装测试确认本地服务与 Moon 加载，但在线采样为 false，未验证自建根节点可达性、真实授权/IP、P2P、NAT 和游戏联机。API Token 仍需按用户账户权限配置；不能把网络 join 的 HTTP 接受、节点在线或测试截图视为游戏连通证明。标准用户/跨账号 UAC、策略/重启等矩阵仍需实机验收。个人安装器尚未签名。
