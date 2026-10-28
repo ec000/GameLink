@@ -234,3 +234,14 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 [个人离线包 CI 40608591410](https://github.com/ec000/GameLink/actions/runs/40608591410) 使用 2aad7cc 固定基线，保留官方 ZeroTier 1.16.2 MSI、原有 Moon/Planet 和应用图标，通过实际安装、自建根加载/备份恢复、重复安装与独立卸载检查。交付 build/artifacts/windows-0.6.4-custom-roots/GameLink-0.6.4-CustomRoots-Offline-Personal-Setup.exe，49,675,146 字节，SHA-256 ae69f9cb1ea884991b4fa2466f64c7034cb3fcc08df1fc2f27fb3f2bddd161b2。本机认证解密后与 Windows 原始大小/哈希一致，目录 0700、文件 0600。两项临时 GitHub Secret 和远端密文已删除并复查为空，本机临时密钥、输入捆绑和密文也已清理。
 
 本次没有部署用户 VPS 上的 GameLink Server，没有创建用户真实房间或验证真实游戏联机。部署目标尚待用户选择，后续仍需实际服务器、HTTPS 和用户/网络池配置。客户端操作反馈修复不能替代房间服务部署。
+
+
+## 本机房间模拟测试包（2026-10-28）
+
+用户选择先在本机测试。Mac 实际构建并运行 Go 服务，独立生成 build/local-room-test-20261028 下的测试配置与凭证（目录 0700，配置/凭证 0600），在 127.0.0.1:8080 验证认证 health、创建房间、Bob 邀请加入、两名成员列表及离开，验证后房间已清理；不连接真实 Controller、不改动 ZeroTier。服务保留运行供当前 Mac 手动测试，PID 与校验进程身份的停止脚本同在该私有目录。另有临时真实进程 smoke 验证互斥写锁、退出后重启；Mac Go race 全量通过。
+
+原服务端 Windows 入口会因不支持状态锁而拒绝启动。新增 Windows 专用独占文件句柄锁与明确的 mock-only CLI 限制，实际 Controller 模式在读取配置前拒绝；Windows mock journal 保留文件同步和重命名，跳过该平台不可用的目录 fsync，不宣称生产断电持久性。Linux/macOS 原有 fsync 路径和真实服务模式不变，Windows 不作为生产服务平台。
+
+[本机测试包 CI 40614226391](https://github.com/ec000/GameLink/actions/runs/40614226391) 全部通过，源提交 dd5dca83644af56959f8e6f1222bc434346bf131。Linux 全量 Go race/vet 通过。Windows 原生验证 CLI 真实模式拒绝、同配置第二进程拒绝、退出后锁恢复、实际服务创建/ACL/邀请加入/成员/离开；Windows PowerShell 5.1 验证启动配置、两账号独立随机凭证、用户/SYSTEM 保护 ACL、重复启动复用、账号凭证复制及使用脚本生成凭证向实际服务认证、创建和离开。未使用真实 ZeroTier 网络或验证游戏。
+
+交付 build/artifacts/local-room-test-20261028/GameLink-Local-Room-Test-Windows.zip，4,921,672 字节，SHA-256 52583a87a0202fe10db3e1e21b89b3fa0e490b806931d76552d275d4eb8452af。完整 CRC 通过；仅含测试服务 EXE、PS1/CMD 与 README，无预置凭证、配置 JSON、MSI 或个人根文件。凭证在目标 Windows 首次运行时生成，测试包配合已安装的 0.6.4 GUI 使用，未重新打包客户端。此包只验证房间管理 API，不能通过模拟 Node/Network ID 加入真实虚拟网络。
