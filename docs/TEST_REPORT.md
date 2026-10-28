@@ -221,3 +221,16 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 [个人离线包 CI 39272358281](https://github.com/ec000/GameLink/actions/runs/39272358281) 使用 f5bdeb7 固定的 0.6.3 基线，继续内置原版 ZeroTier 1.16.2 MSI 和原有 Moon/Planet；真实安装、根文件备份恢复、Moon 加载、重复安装/独立卸载检查通过。最终安装器 PE 资源也确认包含全部九个原始图标帧。图标变更不调整网络或凭据配置；未进行用户 Windows 桌面图标缓存、真实网络和游戏验收。
 
 交付 build/artifacts/windows-0.6.3-custom-roots/GameLink-0.6.3-CustomRoots-Offline-Personal-Setup.exe，49,673,584 字节，SHA-256 6bac02533407a8da6a54d674ba7b1803bccfe3025c983fbe3523752f65f04a33；本机认证解密后与 Windows 原始文件大小/哈希一致。目录 0700、文件 0600。两项临时 GitHub Secret 与远端密文已删除并复查为空，本机临时密钥、输入捆绑和密文已清理，个人 EXE/MSI/根文件二进制未公开上传。
+
+
+## 房间操作反馈修复 0.6.4（2026-10-28）
+
+用户报告点击创建房间无反应，并确认尚未部署房间服务或未填写个人访问凭证。原客户端将本地拒绝与请求错误仅写入日志；新版本在房间页顶部直接显示缺少凭证、非法地址/凭证、连接失败、401/403、异常响应及操作成功，当前页自动滚动到提示。新增设置与游戏选择入口、所选游戏摘要；请求期间显示进度、禁止重复提交并锁定请求使用的房间服务字段。创建房间仍需要单独部署 GameLink Server，不要求预先指定或启动游戏 EXE。
+
+本机 macOS / Qt 6.11.2 编译、CTest 3/3 通过（Qt 22 项通过、1 项 Windows 专属检查跳过）。新增回环集成验证缺少凭证时不发请求、设置入口可达、非法地址/短凭证拒绝、延迟响应时禁止重复点击与修改配置、401 错误可见且恢复按钮、缺少房间/网络 ID 时拒绝成功、有效响应显示成功，以及凭证/邀请/上游内容不写日志。现有创建、入网、DIRECT/RELAY/UNKNOWN 和离开回归通过。缺凭证界面预览已保存并检查。
+
+[Windows/Linux CI 40608023583](https://github.com/ec000/GameLink/actions/runs/40608023583) 全部通过，应用提交 92c775fab1d7d52c1ea4bf64fdf4431117211798。Windows MSVC / Qt 6.8.3 编译、3/3 CTest、六页大小窗口布局、独立部署、实际安装器生命周期及原生界面预览检查通过。已下载基线 ZIP 全量 CRC 校验、确认无 MSI，SHA-256 992d4cd1bc9cd8bc718aa23e1b5f3f5c83c345d898d1ab55dfbb7f2b756f72ca。
+
+[个人离线包 CI 40608591410](https://github.com/ec000/GameLink/actions/runs/40608591410) 使用 2aad7cc 固定基线，保留官方 ZeroTier 1.16.2 MSI、原有 Moon/Planet 和应用图标，通过实际安装、自建根加载/备份恢复、重复安装与独立卸载检查。交付 build/artifacts/windows-0.6.4-custom-roots/GameLink-0.6.4-CustomRoots-Offline-Personal-Setup.exe，49,675,146 字节，SHA-256 ae69f9cb1ea884991b4fa2466f64c7034cb3fcc08df1fc2f27fb3f2bddd161b2。本机认证解密后与 Windows 原始大小/哈希一致，目录 0700、文件 0600。两项临时 GitHub Secret 和远端密文已删除并复查为空，本机临时密钥、输入捆绑和密文也已清理。
+
+本次没有部署用户 VPS 上的 GameLink Server，没有创建用户真实房间或验证真实游戏联机。部署目标尚待用户选择，后续仍需实际服务器、HTTPS 和用户/网络池配置。客户端操作反馈修复不能替代房间服务部署。
