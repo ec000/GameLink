@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -21,6 +22,9 @@ func main() {
 	config := flag.String("config", "deploy/server.json", "configuration path")
 	mock := flag.Bool("mock", false, "explicit offline mock; loopback only, never authorizes real nodes")
 	flag.Parse()
+	if runtime.GOOS == "windows" && !*mock {
+		log.Fatal("Windows supports local --mock testing only; deploy the real controller service on Linux")
+	}
 	b, err := os.ReadFile(*config)
 	if err != nil {
 		log.Fatal("cannot read config")

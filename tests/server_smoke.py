@@ -3,6 +3,9 @@
 import argparse,hashlib,json,os,pathlib,secrets,socket,subprocess,tempfile,time,urllib.request,urllib.error
 p=argparse.ArgumentParser();p.add_argument('--binary',required=True);args=p.parse_args()
 binary=str(pathlib.Path(args.binary).resolve())
+if os.name=='nt':
+    refused=subprocess.run([binary,'--config','unused.json'],capture_output=True,text=True,timeout=5)
+    assert refused.returncode!=0 and 'Windows supports local --mock testing only' in refused.stderr
 with tempfile.TemporaryDirectory(prefix='gamelink-smoke-') as tmp:
     s=socket.socket();s.bind(('127.0.0.1',0));port=s.getsockname()[1];s.close()
     tokens={name:secrets.token_hex(32) for name in ['alice','bob']}
@@ -27,6 +30,8 @@ with tempfile.TemporaryDirectory(prefix='gamelink-smoke-') as tmp:
                 if call('GET','/health')['mode']=='mock':break
             except (OSError,AssertionError):time.sleep(.05)
         else:raise AssertionError('server not ready')
+        second=subprocess.run([binary,'--mock','--config',str(cfg)],capture_output=True,text=True,timeout=5)
+        assert second.returncode!=0 and 'state already in use' in second.stderr
         call('POST','/rooms',body={'gameId':'dst','policy':'direct_required'},expected=422)
         room=call('POST','/rooms',body={'gameId':'dst'},expected=201)
         path='/rooms/'+room['id']
@@ -35,8 +40,20 @@ with tempfile.TemporaryDirectory(prefix='gamelink-smoke-') as tmp:
         assert len(call('GET',path+'/peers','bob')['peers'])==2
         call('POST',path+'/leave',body={},expected=204)
         call('GET',path,expected=404)
-        print('PASS real server process: health, strict rejection, create, ACL, join, peers, leave')
+        print('PASS real server process: health, exclusive state lock, strict rejection, create, ACL, join, peers, leave')
     finally:
         proc.terminate()
         try:proc.wait(timeout=5)
         except subprocess.TimeoutExpired:proc.kill();proc.wait()
+    restarted=subprocess.Popen([binary,'--mock','--config',str(cfg)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(100):
+            try:
+                if call('GET','/health')['mode']=='mock':break
+            except (OSError,AssertionError):time.sleep(.05)
+        else:raise AssertionError('server lock did not recover after process exit')
+        print('PASS state lock released on process exit; existing mock state restarted')
+    finally:
+        restarted.terminate()
+        try:restarted.wait(timeout=5)
+        except subprocess.TimeoutExpired:restarted.kill();restarted.wait()

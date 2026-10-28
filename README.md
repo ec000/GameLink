@@ -107,6 +107,8 @@ python3 scripts/make_demo_config.py --directory build/demo
 ./build/server/gamelink-server --mock --config build/demo/server.json
 ```
 
+Windows 可使用独立 `GameLink-Local-Room-Test-Windows.zip`：解压后运行 `Start local room test.cmd`，按包内说明将地址和自动复制的测试凭证填入已安装的客户端，无需安装 Go/Python。服务端 Windows 入口仅支持模拟测试，不支持生产 Controller 模式。详见 [本机房间测试](docs/ROOMS.md#windows-本机模拟测试包)。
+
 测试 Alice/Bob 凭证位于权限 0600 的 `build/demo/credentials.json`。仅用于本机 mock：不连接真实 Controller、不分配真实虚拟 IP、不宣称有任何 P2P。GUI Settings 中填入 GameLink token。mock 状态文件不能切换为真实运行，生产必须使用独立路径。
 
 ## Qt 6 客户端验证与 CI

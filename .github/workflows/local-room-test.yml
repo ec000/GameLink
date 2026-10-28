@@ -1,0 +1,51 @@
+name: Local room test server
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-regression:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - run: go test -race ./... && go vet ./...
+        working-directory: server
+  windows-local-demo:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Build mock-only Windows server and check exclusive locking
+        shell: pwsh
+        working-directory: server
+        run: |
+          go test ./cmd/gamelink-server
+          if ($LASTEXITCODE -ne 0) { throw 'Windows state lock test failed' }
+          New-Item -ItemType Directory ../build/local-room-test -Force | Out-Null
+          go build -trimpath -o ../build/local-room-test/gamelink-server-local-demo.exe ./cmd/gamelink-server
+          if ($LASTEXITCODE -ne 0) { throw 'Windows server build failed' }
+      - name: Test actual Windows process and room API lifecycle
+        shell: pwsh
+        run: |
+          python tests/server_smoke.py --binary build/local-room-test/gamelink-server-local-demo.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Windows room lifecycle failed' }
+      - name: Verify standard Windows PowerShell launcher and protected credentials
+        shell: pwsh
+        run: |
+          Copy-Item scripts/local-room-test/* build/local-room-test/
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/local_demo_windows.ps1 -StageDirectory build/local-room-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows local test launcher failed' }
+          Compress-Archive -Path build/local-room-test/* -DestinationPath build/GameLink-Local-Room-Test-Windows.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: GameLink-Local-Room-Test-Windows
+          path: build/GameLink-Local-Room-Test-Windows.zip
+          if-no-files-found: error
+          retention-days: 14

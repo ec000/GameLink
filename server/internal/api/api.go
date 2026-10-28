@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -167,7 +168,9 @@ func (s *Server) save() error {
 	if err == nil {
 		err = os.Rename(name, s.cfg.StateFile)
 	}
-	if err == nil {
+	// Directory fsync is not available for this Windows mock-only entry point.
+	// Real controller deployments retain the existing durable journal path.
+	if err == nil && !(s.mock && runtime.GOOS == "windows") {
 		d, e := os.Open(dir)
 		if e != nil {
 			return e

@@ -16,3 +16,11 @@ GameLink 的房间功能由独立的 gamelink-server 提供。ZeroTier 服务负
 房间页顶部保留操作状态，失败时显示具体原因，当前页会自动滚动使结果可见。缺少凭证时立即提示并保留房间服务设置入口；地址/凭证格式错误在本地拒绝，不发出创建请求。服务器请求期间显示正在创建/加入/离开，禁止重复操作及修改提交时的服务凭证。失败后恢复按钮；有效响应才显示成功。创建、加入、离开均使用同一反馈区域，完整脱敏事件仍保留在网络诊断页。
 
 连接失败或超时需要核对房间服务部署和地址；401/403 需要核对 GameLink 个人凭证；返回 HTML、错误接口或缺少房间/网络 ID 时不会伪造成功。客户端提示改善不等于已在用户 VPS 部署或验证了真实房间。
+
+## Windows 本机模拟测试包
+
+`GameLink-Local-Room-Test-Windows.zip` 是独立服务器测试包，配合已安装的 GameLink 0.6.4 使用。完整解压后双击 `Start local room test.cmd`，在客户端房间服务设置中填写 `http://127.0.0.1:8080`，并粘贴脚本刚复制到剪贴板的 Alice 测试凭证，即可验证创建和离开。需要第二个成员时再打开一个客户端窗口，使用 `Copy Bob credential.cmd` 切换测试账号，按包内 README 操作。
+
+凭证在目标 Windows 首次运行时用 CSPRNG 生成，不随 ZIP 分发、不打印到控制台；数据保存在 `%LOCALAPPDATA%/GameLink/LocalRoomTest`，仅当前用户与 SYSTEM 可读。重复启动复用原凭证，不覆盖其他环境的配置。服务仅监听回环，已有 8080 监听时拒绝启动，不结束任何已有进程；关闭测试控制台或 Ctrl+C 即停止。
+
+此包明确使用 `--mock`：只测试房间创建、加入、成员和离开，不调用真实 Controller、不提供可用于游戏的虚拟 IP。模拟 Node/Network ID 不应加入真实 ZeroTier；不要点连接虚拟网络。Windows 入口拒绝真实 Controller 模式；生产部署继续使用 Linux。Windows 模拟状态只做文件同步与重命名，不承诺 Linux 生产 journal 的目录 fsync/断电持久性。
