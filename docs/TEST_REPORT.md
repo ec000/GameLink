@@ -244,4 +244,6 @@ CI 中 sc stop 返回过 109（ERROR_BROKEN_PIPE）；测试仅在随后真实�
 
 [本机测试包 CI 40614226391](https://github.com/ec000/GameLink/actions/runs/40614226391) 全部通过，源提交 dd5dca83644af56959f8e6f1222bc434346bf131。Linux 全量 Go race/vet 通过。Windows 原生验证 CLI 真实模式拒绝、同配置第二进程拒绝、退出后锁恢复、实际服务创建/ACL/邀请加入/成员/离开；Windows PowerShell 5.1 验证启动配置、两账号独立随机凭证、用户/SYSTEM 保护 ACL、重复启动复用、账号凭证复制及使用脚本生成凭证向实际服务认证、创建和离开。未使用真实 ZeroTier 网络或验证游戏。
 
-交付 build/artifacts/local-room-test-20261028/GameLink-Local-Room-Test-Windows.zip，4,921,672 字节，SHA-256 52583a87a0202fe10db3e1e21b89b3fa0e490b806931d76552d275d4eb8452af。完整 CRC 通过；仅含测试服务 EXE、PS1/CMD 与 README，无预置凭证、配置 JSON、MSI 或个人根文件。凭证在目标 Windows 首次运行时生成，测试包配合已安装的 0.6.4 GUI 使用，未重新打包客户端。此包只验证房间管理 API，不能通过模拟 Node/Network ID 加入真实虚拟网络。
+首轮验证包 build/artifacts/local-room-test-20261028/GameLink-Local-Room-Test-Windows.zip，4,921,672 字节，SHA-256 52583a87a0202fe10db3e1e21b89b3fa0e490b806931d76552d275d4eb8452af。完整 CRC 通过；仅含测试服务 EXE、PS1/CMD 与 README，无预置凭证、配置 JSON、MSI 或个人根文件。凭证在目标 Windows 首次运行时生成，测试包配合已安装的 0.6.4 GUI 使用，未重新打包客户端。此包只验证房间管理 API，不能通过模拟 Node/Network ID 加入真实虚拟网络。
+
+最终补充 [CI 40614834650](https://github.com/ec000/GameLink/actions/runs/40614834650)，源提交 e8850c59eb2274f8fe269790c75e1c336461b00c，全部成功：真实服务持有状态锁期间仍可复制 Bob 凭证，重复启动在端口检查处拒绝，不影响原服务。最终交付改为 build/artifacts/local-room-test-20261028-final/GameLink-Local-Room-Test-Windows.zip，4,921,670 字节，SHA-256 d22ad50cbaaaeb7dc9f7f14cad11b2bccb7826ae0100c8671cc91185aa0ec1c4；CRC/六个静态文件/无配置与凭证检查通过。
