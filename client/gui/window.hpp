@@ -32,7 +32,9 @@ private:
  QLabel* installerStatus;QLineEdit* installerPath;QComboBox* installedProducts;
  QPushButton *installZeroTier,*uninstallZeroTier,*chooseInstaller,*refreshProducts;
  Transport transport;QSettings settings;QTimer pollTimer,expiryTimer,probeTimer,environmentTimer;QElapsedTimer sampleAge,joiningAge,probeClock,probeDone;
- QLabel *home,*roomInfo,*probeInfo,*capability,*installationStatus,*serviceStatus,*localApiStatus,*portStatus;
+ QLabel *home,*roomInfo,*roomFeedback,*roomGameSummary,*probeInfo,*capability,*installationStatus,*serviceStatus,*localApiStatus,*portStatus;
+ QPushButton *createRoomButton,*joinRoomButton,*leaveRoomButton;
+ QString roomOperation;
  QLabel *nodeValue,*ipValue,*roomValue,*connectionBadge,*sidebarStatus,*lastEvent,*gameDetails;
  QLabel *zeroTierNodeStatus,*zeroTierNetworkStatus,*zeroTierNetworkId,*networkOperationStatus;
  int sampledPort{};QString sampledTokenFile;
@@ -50,7 +52,8 @@ private:
  void buildUi();void refreshEnvironment();void localFailure(const QString&,const QString&);
  void detectCredentials();void tryCredential(QStringList,int,QString,quint64,QString={});
  void refreshInstaller();void updateInstallerButtons();void selectInstaller();void installService();void uninstallService();
- void log(const QString&);void save();void pollLocal();void pollRoom();void render();void roomAction(bool create);void applyRoom(const QJsonObject&);
+ void log(const QString&);void save();void pollLocal();void pollRoom();void render();void roomAction(bool create);bool applyRoom(const QJsonObject&);
+ void roomMessage(const QString&,const QString& state=QStringLiteral("error"));void updateRoomControls();
  void localJoin();void localLeave();void renderZeroTier();bool localSampleFresh()const;QString networkState(const QJsonObject&,bool)const;
  void leaveRoom();void clearRoom();void chooseGame();void launch();void bindEcho();void startProbe();void probeStep();void datagrams();void stopProbe();
  void api(const QString&,const QString&,const QJsonObject&,Transport::Callback);

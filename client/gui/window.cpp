@@ -20,6 +20,8 @@
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QScrollArea>
+#include <QStackedWidget>
 #include <QTableWidget>
 #include <QStyle>
 #include <QColor>
@@ -98,34 +100,66 @@ void Window::chooseGame(){
  gamePath->setText(settings.value(S("gamePath/")+games->currentData().toString()).toString());pathConfigured=!gamePath->text().isEmpty();
  const auto mode=profiles.value(games->currentData().toString())[S("mode")].toString();
  gameDetails->setText((mode==S("virtual_lan")?S("虚拟局域网 · 在游戏内使用 LAN 房间"):mode==S("virtual_ip")?S("虚拟 IP · 在游戏内手动连接伙伴地址"):S("仅观察 · 沿用游戏原有 Steam / UDP 联机"))+S("\n兼容性未验证，请以实际游戏测试为准。"));
+ roomGameSummary->setText(games->currentData().toString().isEmpty()?S("未加载游戏配置，请在「我的游戏」中选择。"):S("当前游戏：")+profiles.value(games->currentData().toString())[S("name")].toString()+S("。创建房间无需先指定或启动游戏程序。"));
 }
 gamelink::Policy Window::selectedPolicy()const{
  const auto selected=sessionPolicy.isEmpty() ? (policy->currentIndex()==1?S("direct_required"):policy->currentIndex()==2?S("relay_allowed"):S("preferred_direct")) : sessionPolicy;
  return selected==S("direct_required")?gamelink::Policy::DirectRequired:selected==S("relay_allowed")?gamelink::Policy::RelayAllowed:gamelink::Policy::PreferredDirect;
 }
 void Window::api(const QString& method,const QString& path,const QJsonObject& body,Transport::Callback cb){transport.room(serverUrl->text(),serverToken->text(),method,path,body,std::move(cb));}
+void Window::roomMessage(const QString& message,const QString& state){
+ roomFeedback->setText(message);roomFeedback->setProperty("state",state);
+ roomFeedback->style()->unpolish(roomFeedback);roomFeedback->style()->polish(roomFeedback);
+ log(message);updateRoomControls();
+ if(auto* stack=findChild<QStackedWidget*>(S("pageStack"));stack && stack->currentIndex()==RoomPage)
+  if(auto* scroll=qobject_cast<QScrollArea*>(stack->currentWidget()))scroll->ensureWidgetVisible(roomFeedback);
+}
+void Window::updateRoomControls(){
+ const bool available=!installer.busy() && !networkMutationBusy && !mutationBusy;
+ createRoomButton->setEnabled(available && roomId.isEmpty());joinRoomButton->setEnabled(available && roomId.isEmpty());
+ leaveRoomButton->setEnabled(available && !roomId.isEmpty());
+ createRoomButton->setText(mutationBusy && roomOperation==S("创建房间")?S("正在创建…"):S("创建房间"));
+ joinRoomButton->setText(mutationBusy && roomOperation==S("加入房间")?S("正在加入…"):S("加入房间"));
+ leaveRoomButton->setText(mutationBusy && roomOperation==S("离开房间")?S("正在离开…"):S("离开房间"));
+ // Keep a room request bound to the service and credentials the user submitted.
+ serverUrl->setEnabled(!mutationBusy);serverToken->setEnabled(!mutationBusy);
+ games->setEnabled(!mutationBusy);policy->setEnabled(!mutationBusy);roomCode->setEnabled(!mutationBusy);
+}
 void Window::roomAction(bool create){
- if(installer.busy()){log(S("ZeroTier 安装/卸载进行中，请等待安装向导结束。"));return;}
- if(networkMutationBusy || mutationBusy || !roomId.isEmpty()){log(S("请先离开当前房间或等待请求完成"));return;}
- if(policy->currentIndex()==1){log(S("拒绝：Direct Required 无可靠流量控制"));return;}
- if(games->currentData().toString().isEmpty()){log(S("未加载游戏配置"));return;}
+ if(installer.busy()){roomMessage(S("ZeroTier 安装/卸载进行中，请等待安装向导结束。"));return;}
+ if(networkMutationBusy || mutationBusy || !roomId.isEmpty()){roomMessage(S("请先离开当前房间或等待请求完成"));return;}
+ if(policy->currentIndex()==1){roomMessage(S("严格直连暂不支持，请在设置中选择「优先直连」或「允许中继」。"));return;}
+ if(games->currentData().toString().isEmpty()){roomMessage(S("未加载游戏配置，请先在「我的游戏」中选择。"));return;}
  QString path=S("/api/v1/rooms");QJsonObject b;
  if(create){b={{S("gameId"),games->currentData().toString()},{S("policy"),policy->currentIndex()==2?S("relay_allowed"):S("preferred_direct")}};}
  else{
   const auto parts=roomCode->text().trimmed().split(QLatin1Char(':'));
-  if(parts.size()!=2 || !QRegularExpression(S("^[0-9a-f]{16}$")).match(parts[0]).hasMatch() || !QRegularExpression(S("^[0-9a-f]{32}$")).match(parts[1]).hasMatch()){log(S("房间码格式为 16 位十六进制 id:32 位邀请密钥"));return;}
+  if(parts.size()!=2 || !QRegularExpression(S("^[0-9a-f]{16}$")).match(parts[0]).hasMatch() || !QRegularExpression(S("^[0-9a-f]{32}$")).match(parts[1]).hasMatch()){roomMessage(S("房间码格式为 16 位十六进制 id:32 位邀请密钥"));return;}
   path+=QLatin1Char('/')+parts[0]+S("/join");b={{S("joinKey"),parts[1]}};invite=parts[1];
  }
- mutationBusy=true;
- api(S("POST"),path,b,[this](QJsonDocument doc,QString err){mutationBusy=false;if(!err.isEmpty()){log(err);return;}applyRoom(doc.object());pollRoom();});
+ if(serverToken->text().trimmed().isEmpty()){roomMessage(S("尚未填写 GameLink 房间访问凭证。请打开「房间服务设置」配置已部署的 GameLink Server 和个人凭证；不是 ZeroTier 本地 Token，凭证重启后需重新填写。"));return;}
+ mutationBusy=true;roomOperation=create?S("创建房间"):S("加入房间");
+ roomMessage(S("正在%1，请稍候…").arg(roomOperation),S("busy"));
+ api(S("POST"),path,b,[this](QJsonDocument doc,QString err){
+  mutationBusy=false;updateRoomControls();
+  if(!err.isEmpty()){
+   QString help;
+   if(err.contains(S("[CONNECTION_REFUSED]")) || err.contains(S("[REQUEST_TIMEOUT]")))help=S("\n请核对 GameLink 房间服务是否部署及可达；默认 127.0.0.1:8080 指这台电脑，ZeroTier 管理后台不能代替房间服务。");
+   else if(err.contains(S("[AUTH_FAILED]")))help=S("\n请在房间服务设置中核对 GameLink 个人访问凭证；不要使用 ZeroTier 本地或控制器管理 Token。");
+   roomMessage(roomOperation+S("失败：")+err+help);return;
+  }
+  if(!doc.isObject()){roomMessage(S("房间服务返回格式无效，请核对是否连接到 GameLink Server。"));return;}
+  if(!applyRoom(doc.object()))return;
+  roomMessage(roomOperation+S("成功；请点击「连接虚拟网络」，并等待授权与 IP 分配。"),S("success"));pollRoom();
+ });
 }
-void Window::applyRoom(const QJsonObject& r){
+bool Window::applyRoom(const QJsonObject& r){
  const auto id=r[S("id")].toString(),n=r[S("networkId")].toString();
- if(!QRegularExpression(S("^[0-9a-f]{16}$")).match(id).hasMatch() || !QRegularExpression(S("^[0-9a-f]{16}$")).match(n).hasMatch()){log(S("服务器房间数据不合法"));return;}
+ if(!QRegularExpression(S("^[0-9a-f]{16}$")).match(id).hasMatch() || !QRegularExpression(S("^[0-9a-f]{16}$")).match(n).hasMatch()){roomMessage(S("服务器房间数据不合法：缺少有效的房间 ID 或 Network ID，请核对 GameLink Server。"));return false;}
  roomId=id;network=n;sessionPolicy=r[S("policy")].toString();
  if(!r[S("joinKey")].toString().isEmpty())invite=r[S("joinKey")].toString();
  roomInfo->setText(S("房间 %1 · 网络 %2 · %3 · 有效至 %4").arg(roomId,network,sessionPolicy,r[S("expiresAt")].toString()));
- joiningAge.restart();probeHealthy=false;sample={};sampleAge.invalidate();log(S("房间已授权；请显式加入 ZeroTier 网络"));pollLocal();render();
+ joiningAge.restart();probeHealthy=false;sample={};sampleAge.invalidate();log(S("房间已授权；请显式加入 ZeroTier 网络"));pollLocal();render();return true;
 }
 void Window::pollRoom(){
  if(roomId.isEmpty() || roomBusy)return;roomBusy=true;const auto expected=roomId;
@@ -141,8 +175,9 @@ void Window::pollRoom(){
  });
 }
 void Window::leaveRoom(){
- if(roomId.isEmpty() || mutationBusy || networkMutationBusy)return;mutationBusy=true;
- api(S("POST"),S("/api/v1/rooms/")+roomId+S("/leave"),{},[this](QJsonDocument,QString err){mutationBusy=false;if(!err.isEmpty()){log(err);return;}clearRoom();roomInfo->setText(S("已离开；Controller 撤销有传播延迟，本地 ZT membership 保留"));});
+ if(roomId.isEmpty() || mutationBusy || networkMutationBusy || installer.busy())return;mutationBusy=true;roomOperation=S("离开房间");
+ roomMessage(S("正在离开房间，请稍候…"),S("busy"));
+ api(S("POST"),S("/api/v1/rooms/")+roomId+S("/leave"),{},[this](QJsonDocument,QString err){mutationBusy=false;updateRoomControls();if(!err.isEmpty()){roomMessage(S("离开房间失败：")+err);return;}clearRoom();roomInfo->setText(S("已离开；Controller 撤销有传播延迟，本地 ZT membership 保留"));roomMessage(S("已离开房间，本机 ZeroTier 网络配置保留。"),S("success"));});
 }
 void Window::clearRoom(){
  roomId.clear();invite.clear();sessionPolicy.clear();network.clear();roomPeers={};target->clear();stopProbe();udp.close();sample={};probeHealthy=false;roomInfo->setText(S("没有房间"));render();
@@ -190,6 +225,7 @@ gamelink::Sample Window::peerSample(const QString& id)const{
  return s;
 }
 void Window::render(){
+ updateRoomControls();
  renderZeroTier();
  const bool fresh=localSampleFresh();
  const auto nodeState=fresh ? (sample.online?S("ONLINE"):S("OFFLINE（API 可访问）")) : S("未知 / 状态过期");

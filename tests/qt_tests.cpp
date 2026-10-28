@@ -637,6 +637,56 @@ private slots:
         QVERIFY(!log->toPlainText().contains(S("private fixture failure")));QCOMPARE(platform->calls,0);
     }
 
+    void roomActionsShowFailuresAndProgressOnTheRoomPage() {
+        HttpFixture fixture;QVERIFY(fixture.listen());
+        QSettings settings;settings.setValue(S("server"),fixture.origin());settings.sync();
+        QPointer<QTcpSocket> pending;
+        fixture.handler=[&](const Request& request,QTcpSocket* socket){
+            if(request.path=="/api/v1/rooms"){QCOMPARE(request.method,QByteArray("POST"));pending=socket;}
+            else if(request.path.endsWith("/peers"))HttpFixture::reply(socket,R"({"peers":[]})");
+            else HttpFixture::reply(socket,"{}",404);
+        };
+        Window window([]{return gamelink::EnvironmentReport{};},gamelink::nativeInstallerPlatform(),[]{return QStringList{};});
+        auto* feedback=window.findChild<QLabel*>(S("roomActionStatus"));QVERIFY(feedback);
+        auto* create=window.findChild<QPushButton*>(S("createRoomButton"));QVERIFY(create);
+        auto* join=window.findChild<QPushButton*>(S("joinRoomButton"));QVERIFY(join);
+        auto* token=window.findChild<QLineEdit*>(S("serverToken"));QVERIFY(token);
+        auto* url=window.findChild<QLineEdit*>(S("serverUrl"));QVERIFY(url);
+        auto* stack=window.findChild<QStackedWidget*>(S("pageStack"));QVERIFY(stack);
+        auto* games=window.findChild<QComboBox*>(S("gameSelector"));QVERIFY(games);
+        auto* summary=window.findChild<QLabel*>(S("roomSelectedGame"));QVERIFY(summary);
+        window.show();stack->setCurrentIndex(Window::RoomPage);
+        window.setWindowTitle(S("GameLink · 房间反馈预览 / MOCK"));
+        QVERIFY(!summary->text().isEmpty());QVERIFY(games->currentIndex()>=0);
+        QVERIFY(window.findChild<QLineEdit*>(S("gamePath"))->text().isEmpty());
+        create->click();QVERIFY(feedback->text().contains(S("尚未填写")));
+        QCOMPARE(feedback->property("state").toString(),S("error"));QVERIFY(fixture.requests.isEmpty());
+        QCoreApplication::processEvents();
+        QVERIFY(window.grab().save(QCoreApplication::applicationDirPath()+S("/room-feedback-fixture.png")));
+        auto* setup=window.findChild<QPushButton*>(S("roomSettingsButton"));QVERIFY(setup);setup->click();
+        QCOMPARE(stack->currentIndex(),int(Window::SettingsPage));
+        token->setText(S("short"));create->click();QVERIFY(feedback->text().contains(S("[ROOM_TOKEN_INVALID]")));
+        token->setText(apiToken);url->setText(S("http://example.invalid"));create->click();
+        QVERIFY(feedback->text().contains(S("[ROOM_URL_INVALID]")));QVERIFY(fixture.requests.isEmpty());
+        url->setText(fixture.origin());stack->setCurrentIndex(Window::RoomPage);
+        create->click();QCOMPARE(feedback->property("state").toString(),S("busy"));
+        QVERIFY(!create->isEnabled());QVERIFY(!join->isEnabled());QVERIFY(!token->isEnabled());QVERIFY(!url->isEnabled());
+        QVERIFY(create->text().contains(S("正在创建")));QTRY_VERIFY(pending);
+        const auto count=fixture.requests.size();create->click();join->click();QCOMPARE(fixture.requests.size(),count);
+        HttpFixture::reply(pending,"private-response-content",401);pending=nullptr;
+        QTRY_VERIFY(feedback->text().contains(S("[AUTH_FAILED]")));QVERIFY(feedback->text().contains(S("个人访问凭证")));
+        QVERIFY(create->isEnabled());QVERIFY(token->isEnabled());QVERIFY(url->isEnabled());
+        create->click();QTRY_VERIFY(pending);HttpFixture::reply(pending,"{}",201);pending=nullptr;
+        QTRY_VERIFY(feedback->text().contains(S("服务器房间数据不合法")));QVERIFY(create->isEnabled());
+        create->click();QTRY_VERIFY(pending);
+        HttpFixture::reply(pending,R"({"id":"1111111111111111","networkId":"abcdef1234000001","policy":"preferred_direct","joinKey":"22222222222222222222222222222222"})",201);pending=nullptr;
+        QTRY_COMPARE(feedback->property("state").toString(),S("success"));QVERIFY(feedback->text().contains(S("创建房间成功")));
+        QVERIFY(!create->isEnabled());QVERIFY(window.findChild<QPushButton*>(S("leaveRoomButton"))->isEnabled());
+        auto* events=window.findChild<QPlainTextEdit*>(S("events"));QVERIFY(events);
+        QVERIFY(!events->toPlainText().contains(apiToken));QVERIFY(!events->toPlainText().contains(S("private-response-content")));
+        QVERIFY(!events->toPlainText().contains(S("22222222222222222222222222222222")));
+    }
+
     void guiRoomJoinPathChangesAndLeave() {
         HttpFixture fixture; QVERIFY(fixture.listen());
         QTemporaryFile tokenFile(settingsDirectory.path() + S("/token-XXXXXX"));

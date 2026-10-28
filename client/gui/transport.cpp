@@ -27,8 +27,8 @@ void Transport::room(const QString& base,const QString& token,const QString& met
  QUrl url(base);QHostAddress ip(url.host());
  if(!url.isValid() || !url.userInfo().isEmpty() || !url.query().isEmpty() || !url.fragment().isEmpty() ||
     (!url.path().isEmpty() && url.path()!=S("/")) ||
-    (url.scheme()!=S("https") && !(url.scheme()==S("http") && ip.isLoopback()))){done({},S("服务器须为 HTTPS origin；本机测试允许 loopback HTTP"));return;}
- if(token.size()<32 || token.size()>256 || token.contains(QLatin1Char('\r')) || token.contains(QLatin1Char('\n'))){done({},S("GameLink 凭证格式无效"));return;}
+    (url.scheme()!=S("https") && !(url.scheme()==S("http") && ip.isLoopback()))){done({},S("[ROOM_URL_INVALID] 请在「设置 → 房间服务」填写 GameLink Server 的 HTTPS 站点根地址；本机测试允许回环 IP 的 HTTP 地址"));return;}
+ if(token.size()<32 || token.size()>256 || token.contains(QLatin1Char('\r')) || token.contains(QLatin1Char('\n'))){done({},S("[ROOM_TOKEN_INVALID] GameLink 房间访问凭证格式无效，请在「设置 → 房间服务」重新填写个人凭证（重启后需重新填写）"));return;}
  url.setPath(path);
  send(url,"Authorization",QByteArray("Bearer ")+token.toUtf8(),method,body,std::move(done));
 }

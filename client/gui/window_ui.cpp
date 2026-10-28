@@ -107,6 +107,9 @@ void Window::buildUi(){
  QWidget#sidebar { background:#eef1f8; border-right:1px solid #e0e5ef; }
  QLabel { background:transparent; border:0; }
  QLabel[role="brand"] { font-size:24px; font-weight:700; color:#243558; }
+ QLabel#roomActionStatus[state="error"] { color:#a52d37; }
+ QLabel#roomActionStatus[state="busy"] { color:#315fdb; }
+ QLabel#roomActionStatus[state="success"] { color:#197054; }
  QLabel#brandMark { background:transparent; }
  QLabel[role="eyebrow"] { font-size:11px; color:#6a7a94; font-weight:600; }
  QLabel[role="pageTitle"] { font-size:28px; font-weight:700; color:#17233b; }
@@ -232,11 +235,18 @@ void Window::buildUi(){
  });gameActions->addStretch();action(S("启动游戏"),gameActions,[this]{launch();},"primary","launchGameButton");
  auto* gameNotice=card(g,S("联机提示"));gameNotice->addWidget(text(S("Warcraft III 使用传统 LAN 模式；DST 通过虚拟 IP 连接。Overcooked! 2 仅观察 Steam / UDP，不替换 Steam 联机。自动安装扫描和 LAN 广播尚未验证。"),"muted"));g->addStretch();
 
- auto* r=pages[2];auto* roomCards=row(r);
- auto* create=card(roomCards,S("发起一场游戏"),S("使用所选游戏与连接策略创建房间。"));create->addWidget(text(S("还未选好游戏？在「我的游戏」中切换配置。"),"muted"));create->addStretch();auto* cr=row(create);action(S("创建房间"),cr,[this]{roomAction(true);},"primary","createRoomButton");cr->addStretch();
- auto* join=card(roomCards,S("加入伙伴的房间"),S("粘贴伙伴分享的完整房间码。"));roomCode=new QLineEdit;roomCode->setObjectName(S("roomCode"));roomCode->setPlaceholderText(S("房间 ID:邀请密钥"));join->addWidget(roomCode);auto* jr=row(join);action(S("加入房间"),jr,[this]{roomAction(false);},"secondary","joinRoomButton");jr->addStretch();
+ auto* r=pages[2];auto* roomService=card(r,S("房间服务"),S("创建和加入房间需要单独部署的 GameLink Server 及个人访问凭证。ZeroTier 在线仅表示虚拟网络可用。"));
+ roomFeedback=text(S("请先配置房间服务，再创建或加入房间。"));roomFeedback->setObjectName(S("roomActionStatus"));roomFeedback->setProperty("state",S("idle"));roomService->addWidget(roomFeedback);
+ auto* roomSetup=row(roomService);action(S("房间服务设置"),roomSetup,[this,stack]{
+  stack->setCurrentIndex(SettingsPage);
+  if(auto* scroll=qobject_cast<QScrollArea*>(stack->currentWidget()))scroll->ensureWidgetVisible(serverToken);
+  serverToken->setFocus();
+ },"secondary","roomSettingsButton");action(S("选择游戏"),roomSetup,[stack]{stack->setCurrentIndex(GamesPage);},"secondary","roomChooseGameButton");roomSetup->addStretch();
+ auto* roomCards=row(r);
+ auto* create=card(roomCards,S("发起一场游戏"),S("使用所选游戏与连接策略创建房间。"));roomGameSummary=text({},"muted");roomGameSummary->setObjectName(S("roomSelectedGame"));create->addWidget(roomGameSummary);create->addStretch();auto* cr=row(create);createRoomButton=action(S("创建房间"),cr,[this]{roomAction(true);},"primary","createRoomButton");cr->addStretch();
+ auto* join=card(roomCards,S("加入伙伴的房间"),S("粘贴伙伴分享的完整房间码。"));roomCode=new QLineEdit;roomCode->setObjectName(S("roomCode"));roomCode->setPlaceholderText(S("房间 ID:邀请密钥"));join->addWidget(roomCode);auto* jr=row(join);joinRoomButton=action(S("加入房间"),jr,[this]{roomAction(false);},"secondary","joinRoomButton");jr->addStretch();
  auto* current=card(r,S("当前会话"));roomInfo=text(S("尚未加入房间 · 创建或输入房间码开始联机。"));roomInfo->setObjectName(S("roomStatus"));current->addWidget(roomInfo);
- auto* roomActions=row(current);roomJoinNetwork=action(S("连接虚拟网络"),roomActions,[this]{localJoin();},"primary","joinNetworkButton");action(S("复制邀请"),roomActions,[this]{if(roomId.isEmpty()){log(S("请先创建或加入房间"));return;}QApplication::clipboard()->setText(roomId+QLatin1Char(':')+invite);log(S("已复制邀请信息；请仅分享给可信玩家"));});roomActions->addStretch();action(S("离开房间"),roomActions,[this]{leaveRoom();},"secondary","leaveRoomButton");
+ auto* roomActions=row(current);roomJoinNetwork=action(S("连接虚拟网络"),roomActions,[this]{localJoin();},"primary","joinNetworkButton");action(S("复制邀请"),roomActions,[this]{if(roomId.isEmpty()){roomMessage(S("请先创建或加入房间"));return;}QApplication::clipboard()->setText(roomId+QLatin1Char(':')+invite);log(S("已复制邀请信息；请仅分享给可信玩家"));});roomActions->addStretch();leaveRoomButton=action(S("离开房间"),roomActions,[this]{leaveRoom();},"secondary","leaveRoomButton");
  auto* members=card(r,S("房间成员"),S("DIRECT 直连 · RELAY 中继 · UNKNOWN 证据不足；状态以新鲜链路数据为准。"));
  peersTable=new QTableWidget(0,5);peersTable->setObjectName(S("peersTable"));peersTable->setHorizontalHeaderLabels({S("玩家 / Node ID"),S("虚拟 IP"),S("状态"),S("物理路径"),S("判定依据")});peersTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);peersTable->verticalHeader()->hide();peersTable->verticalHeader()->setDefaultSectionSize(60);peersTable->setShowGrid(false);peersTable->setAlternatingRowColors(true);peersTable->setEditTriggers(QAbstractItemView::NoEditTriggers);peersTable->setSelectionBehavior(QAbstractItemView::SelectRows);peersTable->setMinimumHeight(215);members->addWidget(peersTable);r->addStretch();
 
