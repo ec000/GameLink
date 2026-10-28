@@ -35,6 +35,12 @@ try {
         } catch { Start-Sleep -Milliseconds 100 }
     }
     if (-not $healthy) { throw 'Generated PowerShell credentials did not authenticate with actual Windows server' }
+    & $script -DataRoot $root -CopyCredentialOnly -Account bob
+    if ((Get-Clipboard -Raw).Trim() -ne $credentials.bob) { throw 'Cannot copy Bob credential while server holds the state lock' }
+    Set-Clipboard -Value 'GameLink local test'
+    $busyRejected=$false
+    try { & $script -DataRoot $root } catch { $busyRejected=$_.Exception.Message -like '*Port 8080 is already in use*' }
+    if (-not $busyRejected) { throw 'Launcher did not refuse a second instance on the occupied port' }
     $room=Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8080/api/v1/rooms' -Headers $headers -ContentType 'application/json' -Body '{"gameId":"dst"}'
     if ($room.id -notmatch '^[a-f0-9]{16}$') { throw 'Cannot create room using generated credentials' }
     Invoke-RestMethod -Method Post -Uri ('http://127.0.0.1:8080/api/v1/rooms/'+$room.id+'/leave') -Headers $headers -ContentType 'application/json' -Body '{}' | Out-Null
@@ -44,3 +50,4 @@ try {
 }
 Write-Host 'PASS: protected random credentials, loopback config, restart reuse, selected account clipboard.'
 Write-Host 'PASS: actual Windows server authenticated generated credentials, created and left a room.'
+Write-Host 'PASS: credentials can be copied while server runs; occupied port is rejected without stopping its owner.'
